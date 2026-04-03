@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type { Route } from 'next';
 import { LogoutButton } from './logout-button';
 
-const links = [
+const links: { href: Route; label: string }[] = [
   { href: '/dashboard', label: 'Oversikt' },
   { href: '/contacts', label: 'Kontakter' },
   { href: '/import', label: 'Importer' },
