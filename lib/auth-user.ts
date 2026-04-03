@@ -1,31 +1,35 @@
-import { redirect } from 'next/navigation';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { NextResponse } from 'next/server';
+import { createSupabaseServerClient, createServiceRoleSupabaseClient } from '@/lib/supabase-server';
+import { isAllowedBetaEmail } from '@/lib/beta-access';
 
-export async function getAuthenticatedUser() {
+export async function requireApiUser() {
   const supabase = await createSupabaseServerClient();
+
   const {
     data: { user },
     error,
   } = await supabase.auth.getUser();
 
-  if (error) {
-    throw error;
+  if (error || !user) {
+    return {
+      user: null,
+      errorResponse: NextResponse.json({ error: 'Ikke autentisert.' }, { status: 401 }),
+    };
   }
 
-  return user ?? null;
-}
-
-export async function requireAuthenticatedUser() {
-  const user = await getAuthenticatedUser();
-
-  if (!user) {
-    redirect('/login');
+  if (!isAllowedBetaEmail(user.email)) {
+    return {
+      user: null,
+      errorResponse: NextResponse.json({ error: 'Ikke godkjent.' }, { status: 403 }),
+    };
   }
 
-  return user;
+  return {
+    user,
+    errorResponse: null,
+  };
 }
 
-export async function getAuthenticatedUserId() {
-  const user = await getAuthenticatedUser();
-  return user?.id ?? null;
+export function getServiceSupabase() {
+  return createServiceRoleSupabaseClient();
 }
