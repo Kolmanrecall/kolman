@@ -5,11 +5,11 @@ import { usePathname } from 'next/navigation';
 import type { Route } from 'next';
 import { LogoutButton } from './logout-button';
 
-const links: { href: Route; label: string }[] = [
+const links = [
   { href: '/dashboard', label: 'Oversikt' },
   { href: '/contacts', label: 'Kontakter' },
   { href: '/import', label: 'Importer' },
-];
+] as const;
 
 export function NavLinks() {
   const pathname = usePathname();
@@ -22,7 +22,7 @@ export function NavLinks() {
         return (
           <Link
             key={link.href}
-            href={link.href}
+            href={link.href as Route}
             className={[
               'rounded-full border px-4 py-2 transition',
               isActive
