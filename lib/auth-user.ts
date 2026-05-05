@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServerClient, createServiceRoleSupabaseClient } from '@/lib/supabase-server';
 import { isAllowedBetaEmail } from '@/lib/beta-access';
 
-export async function requireApiUser() {
+export async function getAuthenticatedUser() {
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -10,7 +10,17 @@ export async function requireApiUser() {
     error,
   } = await supabase.auth.getUser();
 
-  if (error || !user) {
+  if (error) {
+    return null;
+  }
+
+  return user ?? null;
+}
+
+export async function requireApiUser() {
+  const user = await getAuthenticatedUser();
+
+  if (!user) {
     return {
       user: null,
       errorResponse: NextResponse.json({ error: 'Ikke autentisert.' }, { status: 401 }),
