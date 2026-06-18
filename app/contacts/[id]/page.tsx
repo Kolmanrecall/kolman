@@ -5,7 +5,6 @@ import { ClassificationCard } from '@/components/classification-card';
 import { MessageDraftCard } from '@/components/message-draft-card';
 import { ReplyAnalysisCard } from '@/components/reply-analysis-card';
 import { ContactNotesCard } from '@/components/contact-notes-card';
-import { ContactRelationsCard } from '@/components/contact-relations-card';
 import { getContactById, getLatestClassification, getLatestMessageDraft, getLatestReplyAnalysis } from '@/lib/data';
 import { StatusBadge, toneFromStatus } from '@/components/status-badge';
 
@@ -77,19 +76,13 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           </SectionCard>
 
           <SectionCard title="Notater" description="Lagre korte notater og relevant kontekst på kontakten.">
-            <ContactNotesCard initialNotes={contact.notes} />
+            <ContactNotesCard contactId={contact.id} initialNotes={contact.notes} />
           </SectionCard>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <SectionCard title="Relasjoner" description="Koble sammen personer som hører til samme bolig, oppdrag eller prosess.">
-            <ContactRelationsCard />
-          </SectionCard>
-
-          <SectionCard title="AI-klassifisering" description="Vurder kontaktens status og prioritet videre i arbeidsflyten.">
-            <ClassificationCard contactId={contact.id} initialClassification={classification} />
-          </SectionCard>
-        </div>
+        <SectionCard title="Prioritering" description="Vurder kontaktens status og prioritet videre i arbeidsflyten.">
+          <ClassificationCard contactId={contact.id} initialClassification={classification} />
+        </SectionCard>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <SectionCard title="Meldingsutkast" description="Lag et kort, naturlig utkast som kan tilpasses før sending.">

@@ -1,45 +1,32 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseServerClient, createServiceRoleSupabaseClient } from '@/lib/supabase-server';
-import { isAllowedBetaEmail } from '@/lib/beta-access';
+import { createServerSupabaseClient, createServiceRoleSupabaseClient } from '@/lib/supabase-server';
+import { isAllowedAccessEmail } from '@/lib/access-control';
 
-export async function getAuthenticatedUser() {
-  const supabase = await createSupabaseServerClient();
-
+export async function requireApiUser() {
+  const authClient = await createServerSupabaseClient();
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser();
+  } = await authClient.auth.getUser();
 
-  if (error) {
-    return null;
+  if (error || !user) {
+    return { user: null, errorResponse: NextResponse.json({ error: 'Ikke logget inn' }, { status: 401 }) };
   }
 
-  return user ?? null;
-}
-
-export async function requireApiUser() {
-  const user = await getAuthenticatedUser();
-
-  if (!user) {
-    return {
-      user: null,
-      errorResponse: NextResponse.json({ error: 'Ikke autentisert.' }, { status: 401 }),
-    };
+  if (!isAllowedAccessEmail(user.email)) {
+    await authClient.auth.signOut();
+    return { user: null, errorResponse: NextResponse.json({ error: 'Denne kontoen har ikke tilgang ennå.' }, { status: 403 }) };
   }
 
-  if (!isAllowedBetaEmail(user.email)) {
-    return {
-      user: null,
-      errorResponse: NextResponse.json({ error: 'Ikke godkjent.' }, { status: 403 }),
-    };
-  }
+  const service = createServiceRoleSupabaseClient();
+  await service.from('users').upsert(
+    {
+      id: user.id,
+      email: user.email,
+      name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Kolman-bruker',
+    },
+    { onConflict: 'id' },
+  );
 
-  return {
-    user,
-    errorResponse: null,
-  };
-}
-
-export function getServiceSupabase() {
-  return createServiceRoleSupabaseClient();
+  return { user, errorResponse: null };
 }

@@ -2,13 +2,34 @@
 
 import { useState } from 'react';
 
-export function ContactNotesCard({ initialNotes }: { initialNotes: string | null }) {
+export function ContactNotesCard({ contactId, initialNotes }: { contactId: string; initialNotes: string | null }) {
   const [notes, setNotes] = useState(initialNotes ?? '');
-  const [saved, setSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleSave() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  async function handleSave() {
+    setIsSaving(true);
+    setSavedMessage(null);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/contacts/${contactId}/notes`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes }),
+      });
+      const json = await response.json();
+
+      if (!response.ok) throw new Error(json.error || 'Kunne ikke lagre notatet.');
+      setNotes(json.contact?.notes ?? '');
+      setSavedMessage('Notatet er lagret på kontakten.');
+      setTimeout(() => setSavedMessage(null), 2400);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Kunne ikke lagre notatet.');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -25,11 +46,13 @@ export function ContactNotesCard({ initialNotes }: { initialNotes: string | null
         <button
           type="button"
           onClick={handleSave}
+          disabled={isSaving}
           className="rounded-2xl border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.16)] px-4 py-3 text-sm font-medium text-white transition hover:bg-[rgba(183,146,104,0.24)]"
         >
-          Lagre notat
+          {isSaving ? 'Lagrer…' : 'Lagre notat'}
         </button>
-        {saved ? <p className="text-sm text-emerald-300">Notat lagret lokalt i denne versjonen.</p> : null}
+        {savedMessage ? <p className="text-sm text-emerald-300">{savedMessage}</p> : null}
+        {error ? <p className="text-sm text-rose-300">{error}</p> : null}
       </div>
     </div>
   );

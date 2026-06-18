@@ -63,7 +63,7 @@ export function LoginForm() {
         });
 
         if (error) throw error;
-        setMessage('Konto opprettet. Hvis e-postbekreftelse er slått på i Supabase, må du bekrefte e-posten før du logger inn.');
+        setMessage('Konto opprettet. Du kan logge inn med e-posten og passordet ditt.');
         setMode('login');
         setPassword('');
         setConfirmPassword('');

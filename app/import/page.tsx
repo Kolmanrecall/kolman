@@ -36,7 +36,28 @@ function cleanValue(value: string | undefined) {
   return trimmed.length ? trimmed : null;
 }
 
-function splitCsvLine(line: string) {
+function cleanDate(value: string | undefined) {
+  const raw = cleanValue(value);
+  if (!raw) return null;
+
+  const norwegianDate = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
+  if (norwegianDate) {
+    const [, day, month, year] = norwegianDate;
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  return raw;
+}
+
+function detectDelimiter(headerLine: string) {
+  const candidates = [',', ';', '\t'];
+  return candidates
+    .map((delimiter) => ({ delimiter, count: splitCsvLine(headerLine, delimiter).length }))
+    .sort((a, b) => b.count - a.count)[0]?.delimiter ?? ',';
+}
+
+function splitCsvLine(line: string, delimiter: string) {
   const cells: string[] = [];
   let current = '';
   let inQuotes = false;
@@ -55,7 +76,7 @@ function splitCsvLine(line: string) {
       continue;
     }
 
-    if (char === ',' && !inQuotes) {
+    if (char === delimiter && !inQuotes) {
       cells.push(current);
       current = '';
       continue;
@@ -78,7 +99,8 @@ function parseCsvToRows(csvText: string): ParsedRow[] {
 
   if (lines.length < 2) throw new Error('CSV-filen må ha overskrifter og minst én rad.');
 
-  const headers = splitCsvLine(lines[0]);
+  const delimiter = detectDelimiter(lines[0]);
+  const headers = splitCsvLine(lines[0], delimiter);
   const indexMap = {
     full_name: mapHeaderIndex(headers, HEADER_ALIASES.full_name),
     email: mapHeaderIndex(headers, HEADER_ALIASES.email),
@@ -93,7 +115,7 @@ function parseCsvToRows(csvText: string): ParsedRow[] {
   if (indexMap.full_name === -1) throw new Error('Fant ikke kolonne for navn. Bruk for eksempel: navn, full_name eller name.');
 
   const rows = lines.slice(1)
-    .map((line) => splitCsvLine(line))
+    .map((line) => splitCsvLine(line, delimiter))
     .map((cells) => ({
       full_name: cleanValue(cells[indexMap.full_name] ?? '') ?? '',
       email: indexMap.email >= 0 ? cleanValue(cells[indexMap.email]) : null,
@@ -102,7 +124,7 @@ function parseCsvToRows(csvText: string): ParsedRow[] {
       notes: indexMap.notes >= 0 ? cleanValue(cells[indexMap.notes]) : null,
       source: indexMap.source >= 0 ? cleanValue(cells[indexMap.source]) : null,
       status_raw: indexMap.status_raw >= 0 ? cleanValue(cells[indexMap.status_raw]) : null,
-      last_contacted_at: indexMap.last_contacted_at >= 0 ? cleanValue(cells[indexMap.last_contacted_at]) : null,
+      last_contacted_at: indexMap.last_contacted_at >= 0 ? cleanDate(cells[indexMap.last_contacted_at]) : null,
     }))
     .filter((row) => row.full_name.length > 0);
 
@@ -113,8 +135,6 @@ function parseCsvToRows(csvText: string): ParsedRow[] {
 function downloadTemplate() {
   const template = [
     'navn,email,telefon,by,status,notater,siste kontakt',
-    'Eksempel Kontakt 1,eksempel1@firma.no,90000000,Oslo,Vurderer salg,Eksempel på notat,2025-11-14',
-    'Eksempel Kontakt 2,eksempel2@firma.no,91111111,Bergen,Tidligere kunde,Eksempel på historikk,2024-06-01',
   ].join('\n');
 
   const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' });
@@ -205,7 +225,7 @@ export default function ImportPage() {
           <p className="mt-3 max-w-3xl text-[#d4c4b2]">Last opp en CSV fra CRM, Excel eller Google Sheets for å få kontaktlisten din inn i Kolman.</p>
         </div>
 
-        <SectionCard title="CSV-import" description="Start med egne kontakter og bygg videre derfra.">
+        <SectionCard title="CSV-import" description="Kolman leser navn, kontaktinfo, status, notater og siste kontakt fra filen.">
           <form className="space-y-4" onSubmit={handleSubmit}>
             <input
               id="csv-upload"
@@ -232,7 +252,7 @@ export default function ImportPage() {
               </button>
             </div>
 
-            <p className="text-sm text-[#b8aa98]">{helperText}</p>
+            <p className="text-sm text-[#b8aa98]">{helperText} Komma, semikolon og tabulator støttes.</p>
             {message ? <p className="text-sm text-[#dcbf9e]">{message}</p> : null}
             {error ? <p className="text-sm text-rose-300">{error}</p> : null}
           </form>

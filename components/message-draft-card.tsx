@@ -20,6 +20,14 @@ type Props = {
   readOnly?: boolean;
 };
 
+function formatIntent(intent: string) {
+  const normalized = intent.toLowerCase();
+  if (normalized.includes('seller')) return 'Oppfølging av mulig selger';
+  if (normalized.includes('client')) return 'Tidligere kunde';
+  if (normalized.includes('valuation')) return 'Verdivurdering';
+  return intent;
+}
+
 export function MessageDraftCard({ contactId, initialDraft, readOnly = false }: Props) {
   const router = useRouter();
   const [draft, setDraft] = useState(initialDraft);
@@ -50,7 +58,7 @@ export function MessageDraftCard({ contactId, initialDraft, readOnly = false }: 
 
       setDraft(json.draft);
       setExplanation(json.explanation ?? null);
-      setInfo(json.mode === 'fallback' ? 'Utkast oppdatert.' : 'Utkast oppdatert med AI.');
+      setInfo('Utkastet er oppdatert.');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kunne ikke lage meldingsutkast.');
@@ -110,15 +118,11 @@ export function MessageDraftCard({ contactId, initialDraft, readOnly = false }: 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-[#8e7c69]">Formål</p>
-              <p className="mt-2 font-medium text-white">{draft.intent}</p>
+              <p className="mt-2 font-medium text-white">{formatIntent(draft.intent)}</p>
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-[#8e7c69]">Kanal</p>
               <p className="mt-2 font-medium text-white">{draft.channel.toUpperCase()}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-[#8e7c69]">Generert av</p>
-              <p className="mt-2 font-medium text-white">{draft.generated_by_model}</p>
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-[#8e7c69]">Status</p>

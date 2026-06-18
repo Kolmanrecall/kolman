@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { createServiceRoleSupabaseClient } from '@/lib/supabase-server';
-import { isAllowedBetaEmail } from '@/lib/beta-access';
+import { isAllowedAccessEmail } from '@/lib/access-control';
 
 export async function GET(request: NextRequest) {
   const response = NextResponse.redirect(new URL('/dashboard', request.url));
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet: Array<{ name: string; value: string; options: Record<string, unknown> }>) {
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
         },
       },
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  if (!isAllowedBetaEmail(data.user.email)) {
+  if (!isAllowedAccessEmail(data.user.email)) {
     await supabase.auth.signOut();
     return NextResponse.redirect(new URL('/login?error=ikke-godkjent', request.url));
   }

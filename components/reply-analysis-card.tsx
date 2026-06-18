@@ -59,7 +59,7 @@ export function ReplyAnalysisCard({ contactId, messageDraft, initialAnalysis, re
       }
 
       setAnalysis(json.analysis);
-      setInfo(json.mode === 'fallback' ? 'Svaranalyse oppdatert.' : 'Svaranalyse oppdatert med AI.');
+      setInfo('Svarvurderingen er oppdatert.');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Svaranalyse feilet.');

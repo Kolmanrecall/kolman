@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getAllowedBetaEmails, isAllowedBetaEmail } from '@/lib/beta-access';
+import { getAllowedAccessEmails, isAllowedAccessEmail } from '@/lib/access-control';
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -9,16 +9,15 @@ const bodySchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const { email } = bodySchema.parse(await request.json());
-    const allowedEmails = getAllowedBetaEmails();
+    const allowedEmails = getAllowedAccessEmails();
 
-    if (!isAllowedBetaEmail(email)) {
+    if (!isAllowedAccessEmail(email)) {
       return NextResponse.json(
         {
           allowed: false,
-          error:
-            allowedEmails.length >= 4
-              ? 'Denne e-posten er ikke invitert til Kolman ennå.'
-              : 'Denne e-posten har ikke tilgang ennå.',
+          error: allowedEmails.length
+            ? 'Denne e-posten er ikke invitert til Kolman ennå.'
+            : 'Tilgangslisten er ikke satt opp ennå.',
         },
         { status: 403 },
       );

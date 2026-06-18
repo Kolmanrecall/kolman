@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { Route } from 'next';
 import { LogoutButton } from './logout-button';
 
 const links = [
@@ -22,7 +21,7 @@ export function NavLinks() {
         return (
           <Link
             key={link.href}
-            href={link.href as Route}
+            href={link.href}
             className={[
               'rounded-full border px-4 py-2 transition',
               isActive

@@ -1,5 +1,4 @@
-import { createServiceRoleSupabaseClient } from '@/lib/supabase-server';
-import { getAuthenticatedUser } from '@/lib/auth-user';
+import { createServiceRoleSupabaseClient, getAuthenticatedUser } from '@/lib/supabase-server';
 import type { Contact } from '@/lib/types';
 
 async function getCurrentUserId() {

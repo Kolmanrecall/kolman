@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { isAllowedBetaEmail } from '@/lib/beta-access';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { isAllowedAccessEmail } from '@/lib/access-control';
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet: Array<{ name: string; value: string; options: Record<string, unknown> }>) {
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isProtected && !isAllowedBetaEmail(user.email)) {
+  if (user && isProtected && !isAllowedAccessEmail(user.email)) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('error', 'ikke-godkjent');

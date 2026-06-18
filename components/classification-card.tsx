@@ -46,7 +46,7 @@ export function ClassificationCard({ contactId, initialClassification, readOnly 
       }
 
       setClassification(json.classification);
-      setInfo(json.mode === 'fallback' ? 'Klassifisering oppdatert.' : 'Klassifisering oppdatert med AI.');
+      setInfo('Vurderingen er oppdatert.');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Klassifisering feilet.');
