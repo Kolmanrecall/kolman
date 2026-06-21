@@ -2,12 +2,15 @@ import Link from 'next/link';
 import { Shell } from '@/components/shell';
 import { SectionCard } from '@/components/section-card';
 import { StatCard } from '@/components/stat-card';
-import { getContacts, getDashboardStats } from '@/lib/data';
+import { getContacts, getDashboardStats, getUpcomingFollowUps } from '@/lib/data';
 import { StatusBadge, toneFromStatus } from '@/components/status-badge';
 import { QuickNoteCard } from '@/components/quick-note-card';
+import { FollowUpForm } from '@/components/follow-up-form';
+import { FollowUpList } from '@/components/follow-up-list';
 
 const overviewPoints = [
   'Hurtignotater lagres direkte på riktig kontakt',
+  'Oppfølginger gjør notater om til konkrete neste steg',
   'Klassifisering, meldingsutkast og svaranalyse lagres per kontakt',
   'Arbeidsflaten er bygget for oppfølging av gamle leads og tidligere kunder',
 ];
@@ -15,8 +18,10 @@ const overviewPoints = [
 export default async function DashboardPage() {
   const stats = await getDashboardStats();
   const contacts = await getContacts();
+  const followUps = await getUpcomingFollowUps(8);
   const recentContacts = contacts.slice(0, 5);
   const hasContacts = contacts.length > 0;
+  const contactOptions = contacts.map((contact) => ({ id: contact.id, full_name: contact.full_name, city: contact.city }));
 
   return (
     <Shell>
@@ -40,8 +45,8 @@ export default async function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard label="Totale kontakter" value={String(stats.totalContacts)} sublabel="I arbeidsflaten" />
           <StatCard label="Varme signaler" value={String(stats.warmOpportunities)} sublabel="Prioriterte kontakter" />
+          <StatCard label="Åpne oppfølginger" value={String(stats.openFollowUps)} sublabel="Neste steg" />
           <StatCard label="Utkast laget" value={String(stats.draftsCreated)} sublabel="Lagrer per kontakt" />
-          <StatCard label="Svar mottatt" value={String(stats.repliesReceived)} sublabel="Siste aktivitet" />
         </div>
 
         {!hasContacts ? (
@@ -62,29 +67,39 @@ export default async function DashboardPage() {
               <QuickNoteCard contacts={contacts.map((contact) => ({ id: contact.id, full_name: contact.full_name, city: contact.city, status_raw: contact.status_raw }))} />
             </SectionCard>
 
+            <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+              <SectionCard title="Neste oppfølginger" description="Konkrete neste steg fra kontaktarbeidet ditt.">
+                <FollowUpList followUps={followUps} />
+              </SectionCard>
+
+              <SectionCard title="Lag oppfølging" description="Koble et neste steg til en kontakt og en dato.">
+                <FollowUpForm contacts={contactOptions} compact />
+              </SectionCard>
+            </div>
+
             <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
               <SectionCard title="Nylige kontakter" description="En rask inngang til kontaktbasen din.">
-              <div className="space-y-3">
-                {recentContacts.map((contact) => (
-                  <Link key={contact.id} href={`/contacts/${contact.id}`} className="flex items-center justify-between rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] px-4 py-3 transition hover:border-[rgba(183,146,104,0.32)] hover:bg-[rgba(255,245,232,0.03)]">
-                    <div>
-                      <div className="font-medium text-white">{contact.full_name}</div>
-                      <div className="mt-1 text-xs text-[#8e7c69]">{contact.city || 'Ukjent by'}</div>
-                    </div>
-                    <StatusBadge value={contact.status_raw || 'Ukjent'} tone={toneFromStatus(contact.status_raw)} />
-                  </Link>
-                ))}
-              </div>
-            </SectionCard>
+                <div className="space-y-3">
+                  {recentContacts.map((contact) => (
+                    <Link key={contact.id} href={`/contacts/${contact.id}`} className="flex items-center justify-between rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] px-4 py-3 transition hover:border-[rgba(183,146,104,0.32)] hover:bg-[rgba(255,245,232,0.03)]">
+                      <div>
+                        <div className="font-medium text-white">{contact.full_name}</div>
+                        <div className="mt-1 text-xs text-[#8e7c69]">{contact.city || 'Ukjent by'}</div>
+                      </div>
+                      <StatusBadge value={contact.status_raw || 'Ukjent'} tone={toneFromStatus(contact.status_raw)} />
+                    </Link>
+                  ))}
+                </div>
+              </SectionCard>
 
-            <SectionCard title="Kolman i bruk" description="Kjernen i arbeidsflaten.">
-              <div className="space-y-3">
-                {overviewPoints.map((item) => (
-                  <div key={item} className="rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] px-4 py-3 text-sm leading-6 text-[#b8aa98]">
-                    {item}
-                  </div>
-                ))}
-              </div>
+              <SectionCard title="Kolman i bruk" description="Kjernen i arbeidsflaten.">
+                <div className="space-y-3">
+                  {overviewPoints.map((item) => (
+                    <div key={item} className="rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] px-4 py-3 text-sm leading-6 text-[#b8aa98]">
+                      {item}
+                    </div>
+                  ))}
+                </div>
               </SectionCard>
             </div>
           </>

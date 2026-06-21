@@ -12,7 +12,6 @@ export type Contact = {
   created_at: string;
 };
 
-
 export type ContactActivity = {
   id: string;
   user_id: string;
@@ -20,6 +19,23 @@ export type ContactActivity = {
   activity_type: string;
   body: string;
   created_at: string;
+};
+
+export type FollowUp = {
+  id: string;
+  user_id: string;
+  contact_id: string;
+  title: string;
+  note: string | null;
+  due_date: string | null;
+  status: 'open' | 'completed' | 'postponed';
+  created_at: string;
+  completed_at: string | null;
+  contact?: {
+    id: string;
+    full_name: string;
+    city: string | null;
+  } | null;
 };
 
 export type ContactClassification = {

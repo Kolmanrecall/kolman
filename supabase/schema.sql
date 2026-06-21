@@ -65,8 +65,23 @@ create table if not exists contact_activities (
   created_at timestamptz default now()
 );
 
+create table if not exists follow_ups (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  contact_id uuid not null references contacts(id) on delete cascade,
+  title text not null,
+  note text,
+  due_date date,
+  status text not null default 'open' check (status in ('open', 'completed', 'postponed')),
+  created_at timestamptz default now(),
+  completed_at timestamptz
+);
+
 create index if not exists contact_activities_user_id_created_at_idx on contact_activities(user_id, created_at desc);
 create index if not exists contact_activities_contact_id_created_at_idx on contact_activities(contact_id, created_at desc);
+create index if not exists follow_ups_user_id_due_date_idx on follow_ups(user_id, due_date asc);
+create index if not exists follow_ups_contact_id_due_date_idx on follow_ups(contact_id, due_date asc);
+create index if not exists follow_ups_user_id_status_idx on follow_ups(user_id, status);
 
 alter table users enable row level security;
 alter table contacts enable row level security;
@@ -74,6 +89,7 @@ alter table contact_classifications enable row level security;
 alter table message_drafts enable row level security;
 alter table contact_replies enable row level security;
 alter table contact_activities enable row level security;
+alter table follow_ups enable row level security;
 
 drop policy if exists "Users can read own profile" on users;
 drop policy if exists "Users can update own profile" on users;
@@ -92,6 +108,10 @@ drop policy if exists "Users can read own activities" on contact_activities;
 drop policy if exists "Users can insert own activities" on contact_activities;
 drop policy if exists "Users can update own activities" on contact_activities;
 drop policy if exists "Users can delete own activities" on contact_activities;
+drop policy if exists "Users can read own follow ups" on follow_ups;
+drop policy if exists "Users can insert own follow ups" on follow_ups;
+drop policy if exists "Users can update own follow ups" on follow_ups;
+drop policy if exists "Users can delete own follow ups" on follow_ups;
 
 create policy "Users can read own profile"
 on users for select
@@ -211,5 +231,33 @@ with check (user_id = auth.uid());
 
 create policy "Users can delete own activities"
 on contact_activities for delete
+to authenticated
+using (user_id = auth.uid());
+
+create policy "Users can read own follow ups"
+on follow_ups for select
+to authenticated
+using (user_id = auth.uid());
+
+create policy "Users can insert own follow ups"
+on follow_ups for insert
+to authenticated
+with check (
+  user_id = auth.uid()
+  and exists (
+    select 1 from contacts
+    where contacts.id = follow_ups.contact_id
+      and contacts.user_id = auth.uid()
+  )
+);
+
+create policy "Users can update own follow ups"
+on follow_ups for update
+to authenticated
+using (user_id = auth.uid())
+with check (user_id = auth.uid());
+
+create policy "Users can delete own follow ups"
+on follow_ups for delete
 to authenticated
 using (user_id = auth.uid());

@@ -6,7 +6,9 @@ import { MessageDraftCard } from '@/components/message-draft-card';
 import { ReplyAnalysisCard } from '@/components/reply-analysis-card';
 import { ContactNotesCard } from '@/components/contact-notes-card';
 import { ContactActivityTimeline } from '@/components/contact-activity-timeline';
-import { getContactActivities, getContactById, getLatestClassification, getLatestMessageDraft, getLatestReplyAnalysis } from '@/lib/data';
+import { FollowUpForm } from '@/components/follow-up-form';
+import { FollowUpList } from '@/components/follow-up-list';
+import { getContactActivities, getContactById, getContactFollowUps, getLatestClassification, getLatestMessageDraft, getLatestReplyAnalysis } from '@/lib/data';
 import { StatusBadge, toneFromStatus } from '@/components/status-badge';
 
 function formatDate(date: string | null) {
@@ -26,6 +28,8 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   const latestDraft = await getLatestMessageDraft(id);
   const latestReplyAnalysis = await getLatestReplyAnalysis(id);
   const activities = await getContactActivities(id);
+  const followUps = await getContactFollowUps(id);
+  const nextFollowUp = followUps[0] ?? null;
 
   return (
     <Shell>
@@ -35,17 +39,18 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           <div className="mt-3 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>
               <h1 className="text-4xl font-semibold tracking-tight text-white">{contact.full_name}</h1>
-              <p className="mt-3 max-w-3xl text-[#d4c4b2]">Samle notater, klassifisering, meldingsutkast og svar på ett sted for hver kontakt.</p>
+              <p className="mt-3 max-w-3xl text-[#d4c4b2]">Samle notater, oppfølginger, meldingsutkast og svar på ett sted for hver kontakt.</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <StatusBadge value={contact.status_raw ?? 'Ukjent status'} tone={toneFromStatus(contact.status_raw)} />
                 <StatusBadge value={contact.city ?? 'Ukjent by'} />
                 <StatusBadge value={`Siste kontakt ${formatDate(contact.last_contacted_at)}`} />
+                <StatusBadge value={nextFollowUp ? `Neste oppfølging ${formatDate(nextFollowUp.due_date)}` : 'Ingen oppfølging'} />
               </div>
             </div>
             <div className="grid min-w-[280px] grid-cols-2 gap-3 text-sm">
               <div className="rounded-[22px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.03)] px-5 py-4 text-[#d4c4b2]">
-                <div className="text-xs uppercase tracking-[0.18em] text-[#8e7c69]">Klassifisering</div>
-                <div className="mt-1 text-lg font-semibold text-white">{classification ? 'Klar' : 'Mangler'}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-[#8e7c69]">Oppfølginger</div>
+                <div className="mt-1 text-lg font-semibold text-white">{followUps.length}</div>
               </div>
               <div className="rounded-[22px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.03)] px-5 py-4 text-[#d4c4b2]">
                 <div className="text-xs uppercase tracking-[0.18em] text-[#8e7c69]">Meldingsutkast</div>
@@ -79,6 +84,16 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
 
           <SectionCard title="Notater" description="Lagre korte notater og relevant kontekst på kontakten.">
             <ContactNotesCard contactId={contact.id} initialNotes={contact.notes} />
+          </SectionCard>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+          <SectionCard title="Oppfølginger" description="Åpne neste steg for denne kontakten.">
+            <FollowUpList followUps={followUps} showContact={false} />
+          </SectionCard>
+
+          <SectionCard title="Ny oppfølging" description="Lag et konkret neste steg knyttet til denne kontakten.">
+            <FollowUpForm fixedContactId={contact.id} compact />
           </SectionCard>
         </div>
 
