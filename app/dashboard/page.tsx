@@ -4,9 +4,10 @@ import { SectionCard } from '@/components/section-card';
 import { StatCard } from '@/components/stat-card';
 import { getContacts, getDashboardStats } from '@/lib/data';
 import { StatusBadge, toneFromStatus } from '@/components/status-badge';
+import { QuickNoteCard } from '@/components/quick-note-card';
 
 const overviewPoints = [
-  'Kontakter, notater, relasjoner og historikk samlet på ett sted',
+  'Hurtignotater lagres direkte på riktig kontakt',
   'Klassifisering, meldingsutkast og svaranalyse lagres per kontakt',
   'Arbeidsflaten er bygget for oppfølging av gamle leads og tidligere kunder',
 ];
@@ -56,8 +57,13 @@ export default async function DashboardPage() {
             </div>
           </SectionCard>
         ) : (
-          <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-            <SectionCard title="Nylige kontakter" description="En rask inngang til kontaktbasen din.">
+          <>
+            <SectionCard title="Hurtignotat" description="Skriv fritt, velg kontakt og lagre informasjonen på riktig kunde.">
+              <QuickNoteCard contacts={contacts.map((contact) => ({ id: contact.id, full_name: contact.full_name, city: contact.city, status_raw: contact.status_raw }))} />
+            </SectionCard>
+
+            <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+              <SectionCard title="Nylige kontakter" description="En rask inngang til kontaktbasen din.">
               <div className="space-y-3">
                 {recentContacts.map((contact) => (
                   <Link key={contact.id} href={`/contacts/${contact.id}`} className="flex items-center justify-between rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] px-4 py-3 transition hover:border-[rgba(183,146,104,0.32)] hover:bg-[rgba(255,245,232,0.03)]">
@@ -79,8 +85,9 @@ export default async function DashboardPage() {
                   </div>
                 ))}
               </div>
-            </SectionCard>
-          </div>
+              </SectionCard>
+            </div>
+          </>
         )}
       </div>
     </Shell>

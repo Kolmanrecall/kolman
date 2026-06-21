@@ -56,11 +56,24 @@ create table if not exists contact_replies (
   created_at timestamptz default now()
 );
 
+create table if not exists contact_activities (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  contact_id uuid not null references contacts(id) on delete cascade,
+  activity_type text not null default 'note',
+  body text not null,
+  created_at timestamptz default now()
+);
+
+create index if not exists contact_activities_user_id_created_at_idx on contact_activities(user_id, created_at desc);
+create index if not exists contact_activities_contact_id_created_at_idx on contact_activities(contact_id, created_at desc);
+
 alter table users enable row level security;
 alter table contacts enable row level security;
 alter table contact_classifications enable row level security;
 alter table message_drafts enable row level security;
 alter table contact_replies enable row level security;
+alter table contact_activities enable row level security;
 
 drop policy if exists "Users can read own profile" on users;
 drop policy if exists "Users can update own profile" on users;
@@ -75,6 +88,10 @@ drop policy if exists "Users can insert own drafts" on message_drafts;
 drop policy if exists "Users can update own drafts" on message_drafts;
 drop policy if exists "Users can read own replies" on contact_replies;
 drop policy if exists "Users can insert own replies" on contact_replies;
+drop policy if exists "Users can read own activities" on contact_activities;
+drop policy if exists "Users can insert own activities" on contact_activities;
+drop policy if exists "Users can update own activities" on contact_activities;
+drop policy if exists "Users can delete own activities" on contact_activities;
 
 create policy "Users can read own profile"
 on users for select
@@ -167,3 +184,32 @@ with check (
       and contacts.user_id = auth.uid()
   )
 );
+
+
+create policy "Users can read own activities"
+on contact_activities for select
+to authenticated
+using (user_id = auth.uid());
+
+create policy "Users can insert own activities"
+on contact_activities for insert
+to authenticated
+with check (
+  user_id = auth.uid()
+  and exists (
+    select 1 from contacts
+    where contacts.id = contact_activities.contact_id
+      and contacts.user_id = auth.uid()
+  )
+);
+
+create policy "Users can update own activities"
+on contact_activities for update
+to authenticated
+using (user_id = auth.uid())
+with check (user_id = auth.uid());
+
+create policy "Users can delete own activities"
+on contact_activities for delete
+to authenticated
+using (user_id = auth.uid());

@@ -5,7 +5,8 @@ import { ClassificationCard } from '@/components/classification-card';
 import { MessageDraftCard } from '@/components/message-draft-card';
 import { ReplyAnalysisCard } from '@/components/reply-analysis-card';
 import { ContactNotesCard } from '@/components/contact-notes-card';
-import { getContactById, getLatestClassification, getLatestMessageDraft, getLatestReplyAnalysis } from '@/lib/data';
+import { ContactActivityTimeline } from '@/components/contact-activity-timeline';
+import { getContactActivities, getContactById, getLatestClassification, getLatestMessageDraft, getLatestReplyAnalysis } from '@/lib/data';
 import { StatusBadge, toneFromStatus } from '@/components/status-badge';
 
 function formatDate(date: string | null) {
@@ -24,6 +25,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   const classification = await getLatestClassification(id);
   const latestDraft = await getLatestMessageDraft(id);
   const latestReplyAnalysis = await getLatestReplyAnalysis(id);
+  const activities = await getContactActivities(id);
 
   return (
     <Shell>
@@ -79,6 +81,10 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             <ContactNotesCard contactId={contact.id} initialNotes={contact.notes} />
           </SectionCard>
         </div>
+
+        <SectionCard title="Historikk" description="Hurtignotater og aktivitet som er lagret på kontakten.">
+          <ContactActivityTimeline activities={activities} />
+        </SectionCard>
 
         <SectionCard title="Prioritering" description="Vurder kontaktens status og prioritet videre i arbeidsflyten.">
           <ClassificationCard contactId={contact.id} initialClassification={classification} />

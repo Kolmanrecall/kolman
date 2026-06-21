@@ -1,5 +1,5 @@
 import { createServiceRoleSupabaseClient, getAuthenticatedUser } from '@/lib/supabase-server';
-import type { Contact } from '@/lib/types';
+import type { Contact, ContactActivity } from '@/lib/types';
 
 async function getCurrentUserId() {
   const user = await getAuthenticatedUser();
@@ -146,5 +146,26 @@ export async function getLatestReplyAnalysis(contactId: string) {
     return data;
   } catch {
     return null;
+  }
+}
+
+export async function getContactActivities(contactId: string): Promise<ContactActivity[]> {
+  const userId = await getCurrentUserId();
+  if (!userId) return [];
+
+  try {
+    const supabase = createServiceRoleSupabaseClient();
+    const { data, error } = await supabase
+      .from('contact_activities')
+      .select('*')
+      .eq('contact_id', contactId)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) throw error;
+    return (data ?? []) as ContactActivity[];
+  } catch {
+    return [];
   }
 }

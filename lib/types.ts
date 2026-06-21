@@ -12,6 +12,16 @@ export type Contact = {
   created_at: string;
 };
 
+
+export type ContactActivity = {
+  id: string;
+  user_id: string;
+  contact_id: string;
+  activity_type: string;
+  body: string;
+  created_at: string;
+};
+
 export type ContactClassification = {
   category: string;
   warmthScore: number;
