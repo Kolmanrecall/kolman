@@ -97,7 +97,7 @@ export function FollowUpForm({
             id="follow-up-title"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder="F.eks. Ring om verdivurdering"
+            placeholder="Ring kunde"
             className="mt-2 w-full rounded-2xl border border-[rgba(220,194,163,0.14)] bg-[rgba(255,245,232,0.03)] px-4 py-3 text-sm text-white outline-none placeholder:text-[#8e7c69] focus:border-[#c59f74]"
           />
         </div>
@@ -125,7 +125,7 @@ export function FollowUpForm({
           value={note}
           onChange={(event) => setNote(event.target.value)}
           rows={compact ? 3 : 4}
-          placeholder="Kort kontekst: hvorfor skal kontakten følges opp?"
+          placeholder="Kort kontekst"
           className="mt-2 w-full rounded-[22px] border border-[rgba(220,194,163,0.14)] bg-[rgba(255,245,232,0.03)] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-[#8e7c69] focus:border-[#c59f74]"
         />
       </div>

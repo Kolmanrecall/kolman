@@ -56,7 +56,7 @@ export function FollowUpList({ followUps, showContact = true }: { followUps: Fol
   if (!followUps.length) {
     return (
       <div className="rounded-[24px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] p-5 text-sm leading-6 text-[#b8aa98]">
-        Ingen åpne oppfølginger ennå. Lag én når en kontakt bør følges opp senere.
+        Ingen åpne oppfølginger.
       </div>
     );
   }

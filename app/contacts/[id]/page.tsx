@@ -39,7 +39,6 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           <div className="mt-3 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>
               <h1 className="text-4xl font-semibold tracking-tight text-white">{contact.full_name}</h1>
-              <p className="mt-3 max-w-3xl text-[#d4c4b2]">Samle notater, oppfølginger, meldingsutkast og svar på ett sted for hver kontakt.</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <StatusBadge value={contact.status_raw ?? 'Ukjent status'} tone={toneFromStatus(contact.status_raw)} />
                 <StatusBadge value={contact.city ?? 'Ukjent by'} />
@@ -53,7 +52,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
                 <div className="mt-1 text-lg font-semibold text-white">{followUps.length}</div>
               </div>
               <div className="rounded-[22px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.03)] px-5 py-4 text-[#d4c4b2]">
-                <div className="text-xs uppercase tracking-[0.18em] text-[#8e7c69]">Meldingsutkast</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-[#8e7c69]">Utkast</div>
                 <div className="mt-1 text-lg font-semibold text-white">{latestDraft ? 'Klar' : 'Mangler'}</div>
               </div>
             </div>
@@ -61,7 +60,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-          <SectionCard title="Kontaktinfo" description="Grunnleggende informasjon og status på kontakten.">
+          <SectionCard title="Kontaktinfo">
             <dl className="grid gap-4 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-xs uppercase tracking-[0.2em] text-[#8e7c69]">E-post</dt>
@@ -82,35 +81,35 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             </dl>
           </SectionCard>
 
-          <SectionCard title="Notater" description="Lagre korte notater og relevant kontekst på kontakten.">
+          <SectionCard title="Notater">
             <ContactNotesCard contactId={contact.id} initialNotes={contact.notes} />
           </SectionCard>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-          <SectionCard title="Oppfølginger" description="Åpne neste steg for denne kontakten.">
+          <SectionCard title="Oppfølginger">
             <FollowUpList followUps={followUps} showContact={false} />
           </SectionCard>
 
-          <SectionCard title="Ny oppfølging" description="Lag et konkret neste steg knyttet til denne kontakten.">
+          <SectionCard title="Ny oppfølging">
             <FollowUpForm fixedContactId={contact.id} compact />
           </SectionCard>
         </div>
 
-        <SectionCard title="Historikk" description="Hurtignotater og aktivitet som er lagret på kontakten.">
+        <SectionCard title="Historikk">
           <ContactActivityTimeline activities={activities} />
         </SectionCard>
 
-        <SectionCard title="Prioritering" description="Vurder kontaktens status og prioritet videre i arbeidsflyten.">
+        <SectionCard title="Prioritering">
           <ClassificationCard contactId={contact.id} initialClassification={classification} />
         </SectionCard>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <SectionCard title="Meldingsutkast" description="Lag et kort, naturlig utkast som kan tilpasses før sending.">
+          <SectionCard title="Meldingsutkast">
             <MessageDraftCard contactId={contact.id} initialDraft={latestDraft} />
           </SectionCard>
 
-          <SectionCard title="Svaranalyse" description="Analyser innkommende svar og få forslag til videre oppfølging.">
+          <SectionCard title="Svaranalyse">
             <ReplyAnalysisCard contactId={contact.id} messageDraft={latestDraft} initialAnalysis={latestReplyAnalysis} />
           </SectionCard>
         </div>

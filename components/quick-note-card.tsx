@@ -66,13 +66,13 @@ export function QuickNoteCard({ contacts }: { contacts: QuickNoteContact[] }) {
       <div className="grid gap-4 lg:grid-cols-[0.7fr_1fr]">
         <div className="space-y-3">
           <label className="block text-xs uppercase tracking-[0.2em] text-[#8e7c69]" htmlFor="quick-note-search">
-            Finn kontakt
+            Søk
           </label>
           <input
             id="quick-note-search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Søk på navn, by eller status"
+            placeholder="Navn, by eller status"
             className="w-full rounded-2xl border border-[rgba(220,194,163,0.14)] bg-[rgba(255,245,232,0.03)] px-4 py-3 text-sm text-white outline-none placeholder:text-[#8e7c69] focus:border-[#c59f74]"
           />
           <select
@@ -90,21 +90,18 @@ export function QuickNoteCard({ contacts }: { contacts: QuickNoteContact[] }) {
               <option value={selectedContactId}>Ingen treff</option>
             )}
           </select>
-          <p className="text-xs leading-5 text-[#8e7c69]">
-            Første versjon bruker manuell kontaktvalg. Det gjør lagringen trygg og unngår at notater havner på feil kunde.
-          </p>
         </div>
 
         <div className="space-y-3">
           <label className="block text-xs uppercase tracking-[0.2em] text-[#8e7c69]" htmlFor="quick-note-body">
-            Hurtignotat
+            Notat
           </label>
           <textarea
             id="quick-note-body"
             value={note}
             onChange={(event) => setNote(event.target.value)}
             rows={7}
-            placeholder="F.eks. Snakket med Per. Vurderer salg etter sommeren. Følg opp i august."
+            placeholder="Skriv notat…"
             className="w-full rounded-[24px] border border-[rgba(220,194,163,0.14)] bg-[rgba(255,245,232,0.03)] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-[#8e7c69] focus:border-[#c59f74]"
           />
         </div>

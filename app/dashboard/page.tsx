@@ -8,13 +8,6 @@ import { QuickNoteCard } from '@/components/quick-note-card';
 import { FollowUpForm } from '@/components/follow-up-form';
 import { FollowUpList } from '@/components/follow-up-list';
 
-const overviewPoints = [
-  'Hurtignotater lagres direkte på riktig kontakt',
-  'Oppfølginger gjør notater om til konkrete neste steg',
-  'Klassifisering, meldingsutkast og svaranalyse lagres per kontakt',
-  'Arbeidsflaten er bygget for oppfølging av gamle leads og tidligere kunder',
-];
-
 export default async function DashboardPage() {
   const stats = await getDashboardStats();
   const contacts = await getContacts();
@@ -31,77 +24,61 @@ export default async function DashboardPage() {
           <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <h1 className="text-4xl font-semibold tracking-tight text-white md:text-5xl">Oversikt</h1>
-              <p className="mt-3 max-w-3xl text-base text-[#d4c4b2] md:text-lg">
-                En samlet arbeidsflate for kontaktarbeid, oppfølging og historikk.
-              </p>
+              <p className="mt-3 max-w-2xl text-base text-[#d4c4b2] md:text-lg">Kontaktarbeid, oppfølging og historikk.</p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Link href="/import" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Importer kontakter</Link>
-              <Link href="/contacts" className="rounded-full border border-[rgba(220,194,163,0.10)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)]">Åpne kontakter</Link>
+              <Link href="/import" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Importer</Link>
+              <Link href="/contacts" className="rounded-full border border-[rgba(220,194,163,0.10)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)]">Kontakter</Link>
             </div>
           </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Totale kontakter" value={String(stats.totalContacts)} sublabel="I arbeidsflaten" />
-          <StatCard label="Varme signaler" value={String(stats.warmOpportunities)} sublabel="Prioriterte kontakter" />
-          <StatCard label="Åpne oppfølginger" value={String(stats.openFollowUps)} sublabel="Neste steg" />
-          <StatCard label="Utkast laget" value={String(stats.draftsCreated)} sublabel="Lagrer per kontakt" />
+          <StatCard label="Kontakter" value={String(stats.totalContacts)} sublabel="Importert" />
+          <StatCard label="Varme signaler" value={String(stats.warmOpportunities)} sublabel="Prioritet" />
+          <StatCard label="Oppfølginger" value={String(stats.openFollowUps)} sublabel="Åpne" />
+          <StatCard label="Utkast" value={String(stats.draftsCreated)} sublabel="Lagret" />
         </div>
 
         {!hasContacts ? (
-          <SectionCard title="Ingen kontakter ennå" description="Når kontaktlisten er importert, vises arbeidsflaten her.">
+          <SectionCard title="Ingen kontakter">
             <div className="rounded-[28px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] p-8">
-              <h2 className="text-2xl font-semibold text-white">Start med en kontaktliste</h2>
-              <p className="mt-3 max-w-2xl text-[#d4c4b2]">
-                Importer en CSV med egne kontakter for å bruke Kolman på gamle leads, tidligere kunder og videre oppfølging.
-              </p>
+              <h2 className="text-2xl font-semibold text-white">Importer kontaktliste</h2>
+              <p className="mt-3 max-w-xl text-[#d4c4b2]">CSV fra CRM, Excel eller Google Sheets.</p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/import" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Importer kontakter</Link>
+                <Link href="/import" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Importer</Link>
               </div>
             </div>
           </SectionCard>
         ) : (
           <>
-            <SectionCard title="Hurtignotat" description="Skriv fritt, velg kontakt og lagre informasjonen på riktig kunde.">
+            <SectionCard title="Hurtignotat">
               <QuickNoteCard contacts={contacts.map((contact) => ({ id: contact.id, full_name: contact.full_name, city: contact.city, status_raw: contact.status_raw }))} />
             </SectionCard>
 
             <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-              <SectionCard title="Neste oppfølginger" description="Konkrete neste steg fra kontaktarbeidet ditt.">
+              <SectionCard title="Neste oppfølginger">
                 <FollowUpList followUps={followUps} />
               </SectionCard>
 
-              <SectionCard title="Lag oppfølging" description="Koble et neste steg til en kontakt og en dato.">
+              <SectionCard title="Lag oppfølging">
                 <FollowUpForm contacts={contactOptions} compact />
               </SectionCard>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-              <SectionCard title="Nylige kontakter" description="En rask inngang til kontaktbasen din.">
-                <div className="space-y-3">
-                  {recentContacts.map((contact) => (
-                    <Link key={contact.id} href={`/contacts/${contact.id}`} className="flex items-center justify-between rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] px-4 py-3 transition hover:border-[rgba(183,146,104,0.32)] hover:bg-[rgba(255,245,232,0.03)]">
-                      <div>
-                        <div className="font-medium text-white">{contact.full_name}</div>
-                        <div className="mt-1 text-xs text-[#8e7c69]">{contact.city || 'Ukjent by'}</div>
-                      </div>
-                      <StatusBadge value={contact.status_raw || 'Ukjent'} tone={toneFromStatus(contact.status_raw)} />
-                    </Link>
-                  ))}
-                </div>
-              </SectionCard>
-
-              <SectionCard title="Kolman i bruk" description="Kjernen i arbeidsflaten.">
-                <div className="space-y-3">
-                  {overviewPoints.map((item) => (
-                    <div key={item} className="rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] px-4 py-3 text-sm leading-6 text-[#b8aa98]">
-                      {item}
+            <SectionCard title="Nylige kontakter">
+              <div className="space-y-3">
+                {recentContacts.map((contact) => (
+                  <Link key={contact.id} href={`/contacts/${contact.id}`} className="flex items-center justify-between rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] px-4 py-3 transition hover:border-[rgba(183,146,104,0.32)] hover:bg-[rgba(255,245,232,0.03)]">
+                    <div>
+                      <div className="font-medium text-white">{contact.full_name}</div>
+                      <div className="mt-1 text-xs text-[#8e7c69]">{contact.city || 'Ukjent by'}</div>
                     </div>
-                  ))}
-                </div>
-              </SectionCard>
-            </div>
+                    <StatusBadge value={contact.status_raw || 'Ukjent'} tone={toneFromStatus(contact.status_raw)} />
+                  </Link>
+                ))}
+              </div>
+            </SectionCard>
           </>
         )}
       </div>
