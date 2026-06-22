@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { BrandMark } from '@/components/brand-mark';
 import { LoginForm } from '@/components/login-form';
 
@@ -29,6 +30,10 @@ export default function LoginPage() {
               Tilgang åpnes kun for godkjente e-postadresser. Hver megler ser bare sine egne data.
             </p>
             <LoginForm />
+            <div className="mt-6 flex items-center justify-between text-xs text-[#8e7c69]">
+              <span>Lukket første versjon</span>
+              <Link href="/personvern" className="transition hover:text-[#dcbf9e]">Personvern</Link>
+            </div>
           </div>
         </div>
       </div>

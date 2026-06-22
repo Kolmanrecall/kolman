@@ -8,7 +8,8 @@ const links = [
   { href: '/dashboard', label: 'Oversikt' },
   { href: '/contacts', label: 'Kontakter' },
   { href: '/import', label: 'Importer' },
-] as const;
+  { href: '/data', label: 'Data' },
+];
 
 export function NavLinks() {
   const pathname = usePathname();
