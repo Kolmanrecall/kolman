@@ -8,9 +8,9 @@ export default function Loading() {
           <BrandMark showText={false} size={80} />
         </div>
         <div>
-          <p className="text-sm uppercase tracking-[0.3em] text-[#caa882]">Kolman Recall</p>
+          <p className="text-sm uppercase tracking-[0.3em] text-[#caa882]">Kolman Eiendom</p>
           <h2 className="mt-2 text-2xl font-semibold">Laster arbeidsflaten…</h2>
-          <p className="mt-2 text-sm text-[#cbbba8]">Forbereder kontakter, prioritering og oppfølging.</p>
+          <p className="mt-2 text-sm text-[#cbbba8]">Forbereder kontakter og oppfølginger.</p>
         </div>
       </div>
     </div>

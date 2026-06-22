@@ -13,7 +13,7 @@ export function BrandMark({ showText = true, size = 40 }: { showText?: boolean; 
       {showText ? (
         <div className="leading-tight">
           <div className="text-[11px] uppercase tracking-[0.28em] text-[#c6a884]">Kolman</div>
-          <div className="text-base font-semibold text-white">Recall</div>
+          <div className="text-base font-semibold text-white">Eiendom</div>
         </div>
       ) : null}
     </Link>
