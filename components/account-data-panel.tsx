@@ -23,12 +23,12 @@ export function AccountDataPanel() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `kolman-data-${new Date().toISOString().slice(0, 10)}.json`;
+      link.download = `kolman-rapport-${new Date().toISOString().slice(0, 10)}.html`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      setMessage('Dataeksport er lastet ned.');
+      setMessage('Dataeksporten er lastet ned som en lesbar rapport.');
     } catch (exportError) {
       setError(exportError instanceof Error ? exportError.message : 'Eksport feilet.');
     }
@@ -65,7 +65,7 @@ export function AccountDataPanel() {
           <div>
             <h3 className="text-lg font-semibold text-white">Eksporter data</h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#b8aa98]">
-              Last ned en kopi av egne kontakter, notater, oppfølginger, historikk og lagrede utkast.
+              Last ned en lesbar rapport med egne kontakter, notater, oppfølginger, historikk og lagrede utkast.
             </p>
           </div>
           <button
@@ -73,7 +73,7 @@ export function AccountDataPanel() {
             onClick={handleExport}
             className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]"
           >
-            Last ned
+            Last ned rapport
           </button>
         </div>
       </div>
