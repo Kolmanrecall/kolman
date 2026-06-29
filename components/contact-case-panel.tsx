@@ -60,11 +60,11 @@ export function ContactCasePanel({
           {linkedCases.map((item) => {
             const link = item.contacts?.[0];
             return (
-              <div key={item.id} className="rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.025)] p-4">
+              <Link key={item.id} href={`/cases/${item.id}` as any} className="block rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.025)] p-4 transition hover:border-[rgba(183,146,104,0.32)] hover:bg-[rgba(255,245,232,0.04)]">
                 <div className="font-medium text-white">{item.title}</div>
                 <div className="mt-1 text-sm text-[#8e7c69]">{[item.address, item.city].filter(Boolean).join(', ') || 'Ingen adresse'}</div>
                 <div className="mt-3 text-xs uppercase tracking-[0.16em] text-[#c6a884]">{link?.role || 'Tilknyttet'}</div>
-              </div>
+              </Link>
             );
           })}
         </div>

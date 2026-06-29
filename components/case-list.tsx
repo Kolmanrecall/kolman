@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import type { PropertyCase } from '@/lib/types';
+import { getCaseStatusLabel } from '@/lib/case-status';
 
-function statusLabel(status: PropertyCase['status']) {
-  if (status === 'closed') return 'Lukket';
-  if (status === 'paused') return 'Avventer';
-  return 'Aktiv';
+function formatDate(date: string | null) {
+  if (!date) return null;
+  const parsed = new Date(`${date}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return new Intl.DateTimeFormat('nb-NO', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed);
 }
 
 export function CaseList({ cases }: { cases: PropertyCase[] }) {
@@ -24,15 +26,22 @@ export function CaseList({ cases }: { cases: PropertyCase[] }) {
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-xl font-semibold text-white">{item.title}</h3>
-                <span className="rounded-full border border-[rgba(183,146,104,0.20)] bg-[rgba(183,146,104,0.08)] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[#dcbf9e]">{statusLabel(item.status)}</span>
+                <Link href={`/cases/${item.id}` as any} className="text-xl font-semibold text-white transition hover:text-[#ead3b7]">{item.title}</Link>
+                <span className="rounded-full border border-[rgba(183,146,104,0.20)] bg-[rgba(183,146,104,0.08)] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[#dcbf9e]">{getCaseStatusLabel(item.status)}</span>
               </div>
               <p className="mt-2 text-sm text-[#8e7c69]">{[item.address, item.city].filter(Boolean).join(', ') || 'Ingen adresse'}</p>
+              {item.next_step ? (
+                <div className="mt-4 rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.025)] px-4 py-3">
+                  <div className="text-xs uppercase tracking-[0.16em] text-[#8e7c69]">Neste steg</div>
+                  <div className="mt-1 text-sm text-white">{item.next_step}</div>
+                  {item.next_step_due_date ? <div className="mt-1 text-xs text-[#c6a884]">{formatDate(item.next_step_due_date)}</div> : null}
+                </div>
+              ) : null}
               {item.notes ? <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-[#d4c4b2]">{item.notes}</p> : null}
             </div>
-            <div className="rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.03)] px-4 py-3 text-sm text-[#d4c4b2]">
+            <Link href={`/cases/${item.id}` as any} className="rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.03)] px-4 py-3 text-sm text-[#d4c4b2] transition hover:border-[rgba(183,146,104,0.32)] hover:bg-[rgba(255,245,232,0.05)]">
               <span className="text-white">{item.contacts?.length ?? 0}</span> kontakter
-            </div>
+            </Link>
           </div>
 
           {item.contacts?.length ? (

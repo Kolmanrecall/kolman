@@ -83,10 +83,30 @@ create table if not exists property_cases (
   title text not null,
   address text,
   city text,
-  status text not null default 'active' check (status in ('active', 'paused', 'closed')),
+  status text not null default 'lead' check (status in ('lead', 'valuation', 'befaring', 'assignment', 'sold', 'lost', 'archived')),
+  next_step text,
+  next_step_due_date date,
   notes text,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
 );
+
+alter table property_cases add column if not exists next_step text;
+alter table property_cases add column if not exists next_step_due_date date;
+alter table property_cases add column if not exists updated_at timestamptz default now();
+
+alter table property_cases drop constraint if exists property_cases_status_check;
+update property_cases
+set status = case
+  when status = 'active' then 'lead'
+  when status = 'paused' then 'valuation'
+  when status = 'closed' then 'archived'
+  else status
+end;
+alter table property_cases alter column status set default 'lead';
+alter table property_cases
+add constraint property_cases_status_check
+check (status in ('lead', 'valuation', 'befaring', 'assignment', 'sold', 'lost', 'archived'));
 
 create table if not exists case_contacts (
   id uuid primary key default gen_random_uuid(),

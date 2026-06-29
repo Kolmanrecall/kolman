@@ -14,18 +14,18 @@ const bodySchema = z.object({
   notes: z.string().trim().max(2000, 'Notatet er for langt.').nullable().optional(),
 });
 
-export async function POST(request: NextRequest) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { user, errorResponse } = await requireApiUser();
   if (!user) return errorResponse!;
 
   try {
+    const { id } = await params;
     const body = bodySchema.parse(await request.json());
     const supabase = createServiceRoleSupabaseClient();
 
     const { data: propertyCase, error } = await supabase
       .from('property_cases')
-      .insert({
-        user_id: user.id,
+      .update({
         title: body.title,
         address: body.address || null,
         city: body.city || null,
@@ -33,7 +33,10 @@ export async function POST(request: NextRequest) {
         next_step: body.nextStep || null,
         next_step_due_date: body.nextStepDueDate || null,
         notes: body.notes || null,
+        updated_at: new Date().toISOString(),
       })
+      .eq('id', id)
+      .eq('user_id', user.id)
       .select('*')
       .single();
 
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ case: propertyCase });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Kunne ikke opprette saken.' },
+      { error: error instanceof Error ? error.message : 'Kunne ikke oppdatere saken.' },
       { status: 400 },
     );
   }

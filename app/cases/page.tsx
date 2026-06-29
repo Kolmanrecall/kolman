@@ -4,10 +4,11 @@ import { SectionCard } from '@/components/section-card';
 import { CaseForm } from '@/components/case-form';
 import { CaseList } from '@/components/case-list';
 import { getPropertyCases } from '@/lib/data';
+import { isOpenCaseStatus } from '@/lib/case-status';
 
 export default async function CasesPage() {
   const cases = await getPropertyCases();
-  const activeCases = cases.filter((item) => item.status !== 'closed');
+  const activeCases = cases.filter((item) => isOpenCaseStatus(item.status));
 
   return (
     <Shell>

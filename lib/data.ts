@@ -110,7 +110,7 @@ export async function getDashboardStats() {
         .from('property_cases')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .neq('status', 'closed'),
+        .not('status', 'in', '(sold,lost,archived,closed)'),
     ]);
 
     const dbContacts = contactsResult.count ?? 0;
@@ -287,6 +287,70 @@ export async function getPropertyCases(): Promise<PropertyCase[]> {
     });
 
     return caseRows.map((item) => ({ ...item, contacts: linksByCase.get(item.id) ?? [] }));
+  } catch {
+    return [];
+  }
+}
+
+export async function getPropertyCaseById(id: string): Promise<PropertyCase | null> {
+  const userId = await getCurrentUserId();
+  if (!userId) return null;
+
+  try {
+    const supabase = createServiceRoleSupabaseClient();
+    const { data: propertyCase, error: caseError } = await supabase
+      .from('property_cases')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (caseError || !propertyCase) throw caseError;
+
+    const { data: links, error: linksError } = await supabase
+      .from('case_contacts')
+      .select('*, contact:contacts(id, full_name, city, email, phone)')
+      .eq('case_id', id)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true });
+
+    if (linksError) throw linksError;
+
+    return { ...(propertyCase as PropertyCase), contacts: normalizeCaseContacts(links as PropertyCaseContact[]) };
+  } catch {
+    return null;
+  }
+}
+
+export async function getCaseFollowUps(caseId: string): Promise<FollowUp[]> {
+  const userId = await getCurrentUserId();
+  if (!userId) return [];
+
+  try {
+    const supabase = createServiceRoleSupabaseClient();
+    const { data: links, error: linksError } = await supabase
+      .from('case_contacts')
+      .select('contact_id')
+      .eq('case_id', caseId)
+      .eq('user_id', userId);
+
+    if (linksError) throw linksError;
+
+    const contactIds = (links ?? []).map((link) => link.contact_id);
+    if (!contactIds.length) return [];
+
+    const { data, error } = await supabase
+      .from('follow_ups')
+      .select('*, contacts!inner(id, full_name, city, user_id)')
+      .eq('user_id', userId)
+      .eq('contacts.user_id', userId)
+      .in('contact_id', contactIds)
+      .neq('status', 'completed')
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return normalizeFollowUps(data as FollowUpRow[]);
   } catch {
     return [];
   }

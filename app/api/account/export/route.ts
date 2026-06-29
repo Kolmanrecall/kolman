@@ -135,6 +135,8 @@ function casesTable(rows: Row[], links: Row[], contactsById: Map<string, Row>) {
           <th>Adresse</th>
           <th>By</th>
           <th>Status</th>
+          <th>Neste steg</th>
+          <th>Neste dato</th>
           <th>Kontakter</th>
           <th>Notat</th>
         </tr>
@@ -156,6 +158,8 @@ function casesTable(rows: Row[], links: Row[], contactsById: Map<string, Row>) {
                 <td>${text(item.address)}</td>
                 <td>${text(item.city)}</td>
                 <td>${text(item.status)}</td>
+                <td>${text(item.next_step)}</td>
+                <td>${text(item.next_step_due_date)}</td>
                 <td>${text(contactSummary)}</td>
                 <td>${text(item.notes)}</td>
               </tr>

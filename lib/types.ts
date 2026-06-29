@@ -38,7 +38,7 @@ export type FollowUp = {
   } | null;
 };
 
-export type PropertyCaseStatus = 'active' | 'paused' | 'closed';
+export type PropertyCaseStatus = 'lead' | 'valuation' | 'befaring' | 'assignment' | 'sold' | 'lost' | 'archived';
 
 export type PropertyCaseContact = {
   id: string;
@@ -64,8 +64,11 @@ export type PropertyCase = {
   address: string | null;
   city: string | null;
   status: PropertyCaseStatus;
+  next_step: string | null;
+  next_step_due_date: string | null;
   notes: string | null;
   created_at: string;
+  updated_at: string | null;
   contacts?: PropertyCaseContact[];
 };
 

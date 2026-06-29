@@ -38,7 +38,7 @@ export default async function DashboardPage() {
           <StatCard label="Kontakter" value={String(stats.totalContacts)} sublabel="Importert" />
           <StatCard label="Varme signaler" value={String(stats.warmOpportunities)} sublabel="Prioritet" />
           <StatCard label="Oppfølginger" value={String(stats.openFollowUps)} sublabel="Åpne" />
-          <StatCard label="Saker" value={String(stats.activeCases)} sublabel="Aktive" />
+          <StatCard label="Saker" value={String(stats.activeCases)} sublabel="Åpne" />
           <StatCard label="Utkast" value={String(stats.draftsCreated)} sublabel="Lagret" />
         </div>
 
