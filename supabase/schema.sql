@@ -77,11 +77,37 @@ create table if not exists follow_ups (
   completed_at timestamptz
 );
 
+create table if not exists property_cases (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  title text not null,
+  address text,
+  city text,
+  status text not null default 'active' check (status in ('active', 'paused', 'closed')),
+  notes text,
+  created_at timestamptz default now()
+);
+
+create table if not exists case_contacts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  case_id uuid not null references property_cases(id) on delete cascade,
+  contact_id uuid not null references contacts(id) on delete cascade,
+  role text,
+  note text,
+  created_at timestamptz default now(),
+  unique(case_id, contact_id)
+);
+
 create index if not exists contact_activities_user_id_created_at_idx on contact_activities(user_id, created_at desc);
 create index if not exists contact_activities_contact_id_created_at_idx on contact_activities(contact_id, created_at desc);
 create index if not exists follow_ups_user_id_due_date_idx on follow_ups(user_id, due_date asc);
 create index if not exists follow_ups_contact_id_due_date_idx on follow_ups(contact_id, due_date asc);
 create index if not exists follow_ups_user_id_status_idx on follow_ups(user_id, status);
+create index if not exists property_cases_user_id_created_at_idx on property_cases(user_id, created_at desc);
+create index if not exists property_cases_user_id_status_idx on property_cases(user_id, status);
+create index if not exists case_contacts_user_id_case_id_idx on case_contacts(user_id, case_id);
+create index if not exists case_contacts_user_id_contact_id_idx on case_contacts(user_id, contact_id);
 
 alter table users enable row level security;
 alter table contacts enable row level security;
@@ -90,6 +116,8 @@ alter table message_drafts enable row level security;
 alter table contact_replies enable row level security;
 alter table contact_activities enable row level security;
 alter table follow_ups enable row level security;
+alter table property_cases enable row level security;
+alter table case_contacts enable row level security;
 
 drop policy if exists "Users can read own profile" on users;
 drop policy if exists "Users can update own profile" on users;
@@ -112,6 +140,14 @@ drop policy if exists "Users can read own follow ups" on follow_ups;
 drop policy if exists "Users can insert own follow ups" on follow_ups;
 drop policy if exists "Users can update own follow ups" on follow_ups;
 drop policy if exists "Users can delete own follow ups" on follow_ups;
+drop policy if exists "Users can read own cases" on property_cases;
+drop policy if exists "Users can insert own cases" on property_cases;
+drop policy if exists "Users can update own cases" on property_cases;
+drop policy if exists "Users can delete own cases" on property_cases;
+drop policy if exists "Users can read own case contacts" on case_contacts;
+drop policy if exists "Users can insert own case contacts" on case_contacts;
+drop policy if exists "Users can update own case contacts" on case_contacts;
+drop policy if exists "Users can delete own case contacts" on case_contacts;
 
 create policy "Users can read own profile"
 on users for select
@@ -259,5 +295,60 @@ with check (user_id = auth.uid());
 
 create policy "Users can delete own follow ups"
 on follow_ups for delete
+to authenticated
+using (user_id = auth.uid());
+
+
+create policy "Users can read own cases"
+on property_cases for select
+to authenticated
+using (user_id = auth.uid());
+
+create policy "Users can insert own cases"
+on property_cases for insert
+to authenticated
+with check (user_id = auth.uid());
+
+create policy "Users can update own cases"
+on property_cases for update
+to authenticated
+using (user_id = auth.uid())
+with check (user_id = auth.uid());
+
+create policy "Users can delete own cases"
+on property_cases for delete
+to authenticated
+using (user_id = auth.uid());
+
+create policy "Users can read own case contacts"
+on case_contacts for select
+to authenticated
+using (user_id = auth.uid());
+
+create policy "Users can insert own case contacts"
+on case_contacts for insert
+to authenticated
+with check (
+  user_id = auth.uid()
+  and exists (
+    select 1 from property_cases
+    where property_cases.id = case_contacts.case_id
+      and property_cases.user_id = auth.uid()
+  )
+  and exists (
+    select 1 from contacts
+    where contacts.id = case_contacts.contact_id
+      and contacts.user_id = auth.uid()
+  )
+);
+
+create policy "Users can update own case contacts"
+on case_contacts for update
+to authenticated
+using (user_id = auth.uid())
+with check (user_id = auth.uid());
+
+create policy "Users can delete own case contacts"
+on case_contacts for delete
 to authenticated
 using (user_id = auth.uid());

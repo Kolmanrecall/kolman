@@ -39,6 +39,12 @@ export async function DELETE(request: NextRequest) {
     const activityDelete = await supabase.from('contact_activities').delete().eq('user_id', user.id);
     if (activityDelete.error) throw activityDelete.error;
 
+    const caseContactsDelete = await supabase.from('case_contacts').delete().eq('user_id', user.id);
+    if (caseContactsDelete.error) throw caseContactsDelete.error;
+
+    const casesDelete = await supabase.from('property_cases').delete().eq('user_id', user.id);
+    if (casesDelete.error) throw casesDelete.error;
+
     const followUpsDelete = await supabase.from('follow_ups').delete().eq('user_id', user.id);
     if (followUpsDelete.error) throw followUpsDelete.error;
 

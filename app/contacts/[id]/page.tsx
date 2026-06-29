@@ -8,7 +8,8 @@ import { ContactNotesCard } from '@/components/contact-notes-card';
 import { ContactActivityTimeline } from '@/components/contact-activity-timeline';
 import { FollowUpForm } from '@/components/follow-up-form';
 import { FollowUpList } from '@/components/follow-up-list';
-import { getContactActivities, getContactById, getContactFollowUps, getLatestClassification, getLatestMessageDraft, getLatestReplyAnalysis } from '@/lib/data';
+import { ContactCasePanel } from '@/components/contact-case-panel';
+import { getContactActivities, getContactById, getContactFollowUps, getContactPropertyCases, getLatestClassification, getLatestMessageDraft, getLatestReplyAnalysis, getPropertyCases } from '@/lib/data';
 import { StatusBadge, toneFromStatus } from '@/components/status-badge';
 
 function formatDate(date: string | null) {
@@ -29,6 +30,8 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   const latestReplyAnalysis = await getLatestReplyAnalysis(id);
   const activities = await getContactActivities(id);
   const followUps = await getContactFollowUps(id);
+  const linkedCases = await getContactPropertyCases(id);
+  const cases = await getPropertyCases();
   const nextFollowUp = followUps[0] ?? null;
 
   return (
@@ -44,6 +47,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
                 <StatusBadge value={contact.city ?? 'Ukjent by'} />
                 <StatusBadge value={`Siste kontakt ${formatDate(contact.last_contacted_at)}`} />
                 <StatusBadge value={nextFollowUp ? `Neste oppfølging ${formatDate(nextFollowUp.due_date)}` : 'Ingen oppfølging'} />
+                <StatusBadge value={`${linkedCases.length} saker`} />
               </div>
             </div>
             <div className="grid min-w-[280px] grid-cols-2 gap-3 text-sm">
@@ -52,8 +56,8 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
                 <div className="mt-1 text-lg font-semibold text-white">{followUps.length}</div>
               </div>
               <div className="rounded-[22px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.03)] px-5 py-4 text-[#d4c4b2]">
-                <div className="text-xs uppercase tracking-[0.18em] text-[#8e7c69]">Utkast</div>
-                <div className="mt-1 text-lg font-semibold text-white">{latestDraft ? 'Klar' : 'Mangler'}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-[#8e7c69]">Saker</div>
+                <div className="mt-1 text-lg font-semibold text-white">{linkedCases.length}</div>
               </div>
             </div>
           </div>
@@ -85,6 +89,10 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             <ContactNotesCard contactId={contact.id} initialNotes={contact.notes} />
           </SectionCard>
         </div>
+
+        <SectionCard title="Saker/adresser">
+          <ContactCasePanel contactId={contact.id} cases={cases} linkedCases={linkedCases} />
+        </SectionCard>
 
         <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
           <SectionCard title="Oppfølginger">

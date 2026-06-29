@@ -29,14 +29,16 @@ export default async function DashboardPage() {
             <div className="flex flex-wrap gap-3">
               <Link href="/import" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Importer</Link>
               <Link href="/contacts" className="rounded-full border border-[rgba(220,194,163,0.10)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)]">Kontakter</Link>
+              <Link href="/cases" className="rounded-full border border-[rgba(220,194,163,0.10)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)]">Saker</Link>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <StatCard label="Kontakter" value={String(stats.totalContacts)} sublabel="Importert" />
           <StatCard label="Varme signaler" value={String(stats.warmOpportunities)} sublabel="Prioritet" />
           <StatCard label="Oppfølginger" value={String(stats.openFollowUps)} sublabel="Åpne" />
+          <StatCard label="Saker" value={String(stats.activeCases)} sublabel="Aktive" />
           <StatCard label="Utkast" value={String(stats.draftsCreated)} sublabel="Lagret" />
         </div>
 

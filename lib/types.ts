@@ -38,6 +38,37 @@ export type FollowUp = {
   } | null;
 };
 
+export type PropertyCaseStatus = 'active' | 'paused' | 'closed';
+
+export type PropertyCaseContact = {
+  id: string;
+  user_id: string;
+  case_id: string;
+  contact_id: string;
+  role: string | null;
+  note: string | null;
+  created_at: string;
+  contact?: {
+    id: string;
+    full_name: string;
+    city: string | null;
+    email: string | null;
+    phone: string | null;
+  } | null;
+};
+
+export type PropertyCase = {
+  id: string;
+  user_id: string;
+  title: string;
+  address: string | null;
+  city: string | null;
+  status: PropertyCaseStatus;
+  notes: string | null;
+  created_at: string;
+  contacts?: PropertyCaseContact[];
+};
+
 export type ContactClassification = {
   category: string;
   warmthScore: number;

@@ -116,6 +116,58 @@ function followUpsTable(rows: Row[], contactsById: Map<string, Row>) {
   `;
 }
 
+
+function casesTable(rows: Row[], links: Row[], contactsById: Map<string, Row>) {
+  if (!rows.length) return emptyState('saker');
+
+  const linksByCase = new Map<string, Row[]>();
+  links.forEach((link) => {
+    const group = linksByCase.get(String(link.case_id)) ?? [];
+    group.push(link);
+    linksByCase.set(String(link.case_id), group);
+  });
+
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>Sak</th>
+          <th>Adresse</th>
+          <th>By</th>
+          <th>Status</th>
+          <th>Kontakter</th>
+          <th>Notat</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map((item: Row) => {
+            const caseLinks = linksByCase.get(String(item.id)) ?? [];
+            const contactSummary = caseLinks
+              .map((link) => {
+                const contact = contactsById.get(String(link.contact_id));
+                return `${contact?.full_name ?? 'Ukjent kontakt'}${link.role ? ` (${link.role})` : ''}`;
+              })
+              .join('\n');
+
+            return `
+              <tr>
+                <td>${text(item.title)}</td>
+                <td>${text(item.address)}</td>
+                <td>${text(item.city)}</td>
+                <td>${text(item.status)}</td>
+                <td>${text(contactSummary)}</td>
+                <td>${text(item.notes)}</td>
+              </tr>
+            `;
+          })
+          .join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+
 function activitiesTable(rows: Row[], contactsById: Map<string, Row>) {
   if (!rows.length) return emptyState('historikk');
 
@@ -224,12 +276,14 @@ function buildHtmlReport(params: {
   profile: Row | null;
   contacts: Row[];
   followUps: Row[];
+  cases: Row[];
+  caseContacts: Row[];
   activities: Row[];
   drafts: Row[];
   classifications: Row[];
   replies: Row[];
 }) {
-  const { exportedAt, profile, contacts, followUps, activities, drafts, classifications, replies } = params;
+  const { exportedAt, profile, contacts, followUps, cases, caseContacts, activities, drafts, classifications, replies } = params;
   const contactsById = new Map<string, Row>(contacts.map((contact: Row) => [String(contact.id), contact]));
 
   return `<!doctype html>
@@ -298,6 +352,7 @@ function buildHtmlReport(params: {
 
     ${section('Kontakter', contacts.length, contactsTable(contacts))}
     ${section('Oppfølginger', followUps.length, followUpsTable(followUps, contactsById))}
+    ${section('Saker', cases.length, casesTable(cases, caseContacts, contactsById))}
     ${section('Historikk', activities.length, activitiesTable(activities, contactsById))}
     ${section('Meldingsutkast', drafts.length, messageDraftsTable(drafts, contactsById))}
     ${simpleRowsTable('Klassifiseringer', classifications, contactsById)}
@@ -320,18 +375,24 @@ export async function GET() {
       { data: profile },
       { data: contacts, error: contactsError },
       { data: followUps, error: followUpsError },
+      { data: cases, error: casesError },
+      { data: caseContacts, error: caseContactsError },
       { data: activities, error: activitiesError },
       { data: drafts, error: draftsError },
     ] = await Promise.all([
       supabase.from('users').select('id, name, email, company_name, created_at').eq('id', user.id).maybeSingle(),
       supabase.from('contacts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('follow_ups').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('property_cases').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('case_contacts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('contact_activities').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('message_drafts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
     ]);
 
     if (contactsError) throw contactsError;
     if (followUpsError) throw followUpsError;
+    if (casesError) throw casesError;
+    if (caseContactsError) throw caseContactsError;
     if (activitiesError) throw activitiesError;
     if (draftsError) throw draftsError;
 
@@ -355,6 +416,8 @@ export async function GET() {
       profile: (profile ?? { id: user.id, email: user.email }) as Row,
       contacts: contactRows,
       followUps: (followUps ?? []) as Row[],
+      cases: (cases ?? []) as Row[],
+      caseContacts: (caseContacts ?? []) as Row[],
       activities: (activities ?? []) as Row[],
       drafts: (drafts ?? []) as Row[],
       classifications: (classificationsResult.data ?? []) as Row[],

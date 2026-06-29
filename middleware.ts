@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies';
 import { createServerClient } from '@supabase/ssr';
-import { isAllowedBetaEmail } from '@/lib/beta-access';
+import { isAllowedAccessEmail } from '@/lib/access-control';
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -27,7 +27,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const protectedPaths = ['/dashboard', '/contacts', '/import', '/data'];
+  const protectedPaths = ['/dashboard', '/contacts', '/cases', '/import', '/data'];
   const isProtected = protectedPaths.some((path) => request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(`${path}/`));
   const isAuthPage = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/auth');
 
@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isProtected && !isAllowedBetaEmail(user.email)) {
+  if (user && isProtected && !isAllowedAccessEmail(user.email)) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('error', 'ikke-godkjent');
