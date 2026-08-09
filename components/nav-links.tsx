@@ -6,6 +6,7 @@ import { LogoutButton } from './logout-button';
 
 const links = [
   { href: '/dashboard', label: 'Oversikt' },
+  { href: '/recall', label: 'Recall' },
   { href: '/contacts', label: 'Kontakter' },
   { href: '/cases', label: 'Saker' },
   { href: '/import', label: 'Importer' },

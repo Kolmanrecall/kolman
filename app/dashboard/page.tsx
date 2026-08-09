@@ -3,6 +3,7 @@ import { Shell } from '@/components/shell';
 import { SectionCard } from '@/components/section-card';
 import { StatCard } from '@/components/stat-card';
 import { getContacts, getDashboardStats, getUpcomingFollowUps } from '@/lib/data';
+import { getRecallQueue } from '@/lib/recall';
 import { StatusBadge, toneFromStatus } from '@/components/status-badge';
 import { QuickNoteCard } from '@/components/quick-note-card';
 import { FollowUpForm } from '@/components/follow-up-form';
@@ -12,6 +13,7 @@ export default async function DashboardPage() {
   const stats = await getDashboardStats();
   const contacts = await getContacts();
   const followUps = await getUpcomingFollowUps(8);
+  const recallItems = await getRecallQueue(50);
   const recentContacts = contacts.slice(0, 5);
   const hasContacts = contacts.length > 0;
   const contactOptions = contacts.map((contact) => ({ id: contact.id, full_name: contact.full_name, city: contact.city }));
@@ -36,7 +38,7 @@ export default async function DashboardPage() {
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <StatCard label="Kontakter" value={String(stats.totalContacts)} sublabel="Importert" />
-          <StatCard label="Varme signaler" value={String(stats.warmOpportunities)} sublabel="Prioritet" />
+          <StatCard label="Recall" value={String(recallItems.length)} sublabel="Prioritert nå" />
           <StatCard label="Oppfølginger" value={String(stats.openFollowUps)} sublabel="Åpne" />
           <StatCard label="Saker" value={String(stats.activeCases)} sublabel="Åpne" />
           <StatCard label="Utkast" value={String(stats.draftsCreated)} sublabel="Lagret" />
@@ -54,6 +56,24 @@ export default async function DashboardPage() {
           </SectionCard>
         ) : (
           <>
+
+            {recallItems.length ? (
+              <SectionCard title="Recall">
+                <div className="space-y-3">
+                  {recallItems.slice(0, 3).map((item) => (
+                    <Link key={item.contact.id} href={`/recall` as any} className="flex items-center justify-between gap-4 rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] px-4 py-3 transition hover:border-[rgba(183,146,104,0.32)] hover:bg-[rgba(255,245,232,0.03)]">
+                      <div>
+                        <div className="font-medium text-white">{item.contact.full_name}</div>
+                        <div className="mt-1 text-xs text-[#8e7c69]">{item.reasons[0]}</div>
+                      </div>
+                      <span className="rounded-full border border-[rgba(183,146,104,0.20)] bg-[rgba(183,146,104,0.08)] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[#dcbf9e]">{item.priorityLabel}</span>
+                    </Link>
+                  ))}
+                  <Link href="/recall" className="inline-flex rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Åpne recall-kø</Link>
+                </div>
+              </SectionCard>
+            ) : null}
+
             <SectionCard title="Hurtignotat">
               <QuickNoteCard contacts={contacts.map((contact) => ({ id: contact.id, full_name: contact.full_name, city: contact.city, status_raw: contact.status_raw }))} />
             </SectionCard>
