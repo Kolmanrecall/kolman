@@ -1,58 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies';
-import { createServerClient } from '@supabase/ssr';
-import { isAllowedAccessEmail } from '@/lib/access-control';
 
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options: Partial<ResponseCookie> }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-        },
-      },
-    },
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const protectedPaths = ['/dashboard', '/contacts', '/cases', '/import', '/data'];
-  const isProtected = protectedPaths.some((path) => request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(`${path}/`));
-  const isAuthPage = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/auth');
-
-  if (isProtected && !user) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
-  }
-
-  if (user && isProtected && !isAllowedAccessEmail(user.email)) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('error', 'ikke-godkjent');
-    return NextResponse.redirect(url);
-  }
-
-  if (user && (request.nextUrl.pathname === '/' || request.nextUrl.pathname === '/login')) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
-  }
-
-  return response;
+export function middleware(request: NextRequest) {
+  return NextResponse.next({ request });
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: ['/dashboard/:path*', '/contacts/:path*', '/cases/:path*', '/import/:path*', '/data/:path*', '/recall/:path*'],
 };
