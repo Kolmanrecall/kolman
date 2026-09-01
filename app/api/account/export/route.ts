@@ -58,6 +58,7 @@ function contactsTable(rows: Row[]) {
           <th>By</th>
           <th>Status</th>
           <th>Siste kontakt</th>
+          <th>Utsatt til</th>
           <th>Notater</th>
         </tr>
       </thead>
@@ -72,6 +73,7 @@ function contactsTable(rows: Row[]) {
                 <td>${text(contact.city)}</td>
                 <td>${text(contact.status_raw)}</td>
                 <td>${text(formatDate(contact.last_contacted_at))}</td>
+                <td>${text(contact.snoozed_until)}</td>
                 <td>${text(contact.notes)}</td>
               </tr>
             `,

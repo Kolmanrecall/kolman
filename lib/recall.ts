@@ -13,6 +13,12 @@ export type RecallQueueItem = {
   suggestedFollowUpTitle: string;
   suggestedDueDate: string;
   daysSinceLastContact: number | null;
+  latestNote: string | null;
+  latestAttempt: {
+    type: string;
+    label: string;
+    created_at: string;
+  } | null;
   latestClassification: {
     category: string;
     warmth_score: number;
@@ -63,6 +69,13 @@ type ReplyRow = {
   created_at: string;
 };
 
+type ActivityRow = {
+  contact_id: string;
+  activity_type: string;
+  body: string;
+  created_at: string;
+};
+
 function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
@@ -90,23 +103,12 @@ function includesAny(value: string, words: string[]) {
   return words.some((word) => normalized.includes(word));
 }
 
-const stopSignals = [
-  'ikke interessert',
-  'ikke aktuelt',
-  'stopp oppfølging',
-  'stopp',
-  'ikke kontakt',
-  'ikke ring',
-  'fjern meg',
-  'avmeldt',
-  'reservert',
-  'solgt via annen megler',
-  'annen megler',
-];
+const stoppingReplyCategories = ['ikke interessert', 'avmeldt', 'stopp'];
+const stoppingReplyNextSteps = ['stopp oppfølging', 'ikke kontakt', 'ikke ring', 'fjern meg'];
 
-function hasStopSignal(value: string | null | undefined) {
-  if (!value) return false;
-  return includesAny(value, stopSignals);
+function hasStructuredStopSignal(reply: ReplyRow | null) {
+  if (!reply) return false;
+  return includesAny(reply.reply_category ?? '', stoppingReplyCategories) || includesAny(reply.next_step ?? '', stoppingReplyNextSteps);
 }
 
 function throwRecallError(scope: string, error: unknown): never {
@@ -118,8 +120,8 @@ function firstName(fullName: string) {
   return fullName.trim().split(/\s+/)[0] || fullName;
 }
 
-function getPriority(score: number): { priority: RecallPriority; priorityLabel: string } {
-  if (score >= 80) return { priority: 'high', priorityLabel: 'Høy' };
+function getPriority(score: number, hasConfirmedHumanSignal: boolean): { priority: RecallPriority; priorityLabel: string } {
+  if (score >= 80 && hasConfirmedHumanSignal) return { priority: 'high', priorityLabel: 'Høy' };
   if (score >= 50) return { priority: 'medium', priorityLabel: 'Medium' };
   return { priority: 'low', priorityLabel: 'Lav' };
 }
@@ -136,6 +138,23 @@ function getDueRank(followUp: FollowUpRow | null, todayInput: string) {
 function chooseOpenFollowUp(rows: FollowUpRow[], todayInput: string) {
   if (!rows.length) return null;
   return [...rows].sort((a, b) => getDueRank(a, todayInput) - getDueRank(b, todayInput))[0] ?? null;
+}
+
+function getLatestNoteSnippet(notes: string | null | undefined) {
+  if (!notes?.trim()) return null;
+  const blocks = notes
+    .split(/\n\s*\n/g)
+    .map((block) => block.trim())
+    .filter(Boolean);
+  const latest = blocks.at(-1) ?? notes.trim();
+  return latest.replace(/^\[[^\]]+\]\s*/, '').slice(0, 320);
+}
+
+function getAttemptLabel(activityType: string) {
+  if (activityType === 'contacted_spoke' || activityType === 'contacted') return 'Snakket med';
+  if (activityType === 'contacted_left_message') return 'La igjen beskjed';
+  if (activityType === 'contacted_no_answer') return 'Ikke svar';
+  return 'Kontaktforsøk';
 }
 
 function getSuggestedTitle(contact: Contact, text: string, classification: ClassificationRow | null) {
@@ -162,100 +181,126 @@ function buildRecallItem(input: {
   hasUnsentDraft: boolean;
   linkedCaseCount: number;
   latestReply: ReplyRow | null;
+  latestAttempt: ActivityRow | null;
   today: Date;
   todayInput: string;
 }): RecallQueueItem | null {
-  const { contact, classification, openFollowUps, hasUnsentDraft, linkedCaseCount, latestReply, today, todayInput } = input;
-  const reasons: string[] = [];
+  const { contact, classification, openFollowUps, hasUnsentDraft, linkedCaseCount, latestReply, latestAttempt, today, todayInput } = input;
+  const reasons: { text: string; weight: number }[] = [];
   const text = `${contact.status_raw ?? ''} ${contact.notes ?? ''}`;
-  const replyText = `${latestReply?.reply_category ?? ''} ${latestReply?.next_step ?? ''} ${latestReply?.reply_text ?? ''}`;
 
-  if (hasStopSignal(text) || hasStopSignal(replyText)) {
+  if (contact.snoozed_until && contact.snoozed_until >= todayInput) {
+    return null;
+  }
+
+  if (hasStructuredStopSignal(latestReply)) {
     return null;
   }
 
   let score = 0;
+  let hasConfirmedHumanSignal = false;
 
   const openFollowUp = chooseOpenFollowUp(openFollowUps, todayInput);
   if (openFollowUp?.due_date && openFollowUp.due_date <= todayInput) {
     score += 45;
-    reasons.push('Har oppfølging som er forfalt eller skal tas i dag.');
+    hasConfirmedHumanSignal = true;
+    reasons.push({ text: 'Har oppfølging som er forfalt eller skal tas i dag.', weight: 45 });
   } else if (openFollowUp?.due_date) {
     const daysUntil = getDueRank(openFollowUp, todayInput);
     if (daysUntil <= 7) {
       score += 25;
-      reasons.push('Har oppfølging denne uken.');
+      reasons.push({ text: 'Har oppfølging denne uken.', weight: 25 });
     } else {
       score -= 10;
-      reasons.push('Har allerede en planlagt oppfølging.');
+      reasons.push({ text: 'Har allerede en planlagt oppfølging.', weight: -10 });
     }
   } else if (openFollowUp) {
     score += 6;
-    reasons.push('Har åpen oppfølging uten dato.');
+    reasons.push({ text: 'Har åpen oppfølging uten dato.', weight: 6 });
   } else {
     score += 16;
-    reasons.push('Ingen åpen oppfølging ligger klar.');
+    reasons.push({ text: 'Ingen åpen oppfølging ligger klar.', weight: 16 });
   }
 
   const daysSinceLastContact = diffDays(contact.last_contacted_at, today);
   if (daysSinceLastContact === null) {
     score += 18;
-    reasons.push('Ingen registrert siste kontakt.');
+    reasons.push({ text: 'Ingen registrert siste kontakt.', weight: 18 });
   } else if (daysSinceLastContact >= 180) {
     score += 38;
-    reasons.push(`Ikke fulgt opp på ${daysSinceLastContact} dager.`);
+    reasons.push({ text: `Ikke fulgt opp på ${daysSinceLastContact} dager.`, weight: 38 });
   } else if (daysSinceLastContact >= 90) {
     score += 28;
-    reasons.push(`Ikke fulgt opp på ${daysSinceLastContact} dager.`);
+    reasons.push({ text: `Ikke fulgt opp på ${daysSinceLastContact} dager.`, weight: 28 });
   } else if (daysSinceLastContact >= 45) {
     score += 16;
-    reasons.push(`Ikke fulgt opp på ${daysSinceLastContact} dager.`);
+    reasons.push({ text: `Ikke fulgt opp på ${daysSinceLastContact} dager.`, weight: 16 });
+  }
+
+  if (latestReply) {
+    hasConfirmedHumanSignal = true;
   }
 
   if (includesAny(text, ['vurderer salg', 'selge', 'salg', 'selger', 'verdivurdering', 'verdiestimat', 'boligbytte'])) {
     score += 28;
-    reasons.push('Har salgssignal i status eller notater.');
+    reasons.push({ text: 'Har salgssignal i status eller notater.', weight: 28 });
   } else if (includesAny(text, ['varm', 'lead', 'interessert', 'senere', 'følg opp', 'ring'])) {
     score += 18;
-    reasons.push('Har oppfølgingssignal i kontaktdata.');
+    reasons.push({ text: 'Har oppfølgingssignal i kontaktdata.', weight: 18 });
   }
 
   if (classification) {
     if (classification.warmth_score >= 8) {
       score += 30;
-      reasons.push(`Klassifisert som ${classification.category}.`);
+      hasConfirmedHumanSignal = true;
+      reasons.push({ text: `Klassifisert som ${classification.category}.`, weight: 30 });
     } else if (classification.warmth_score >= 6) {
       score += 18;
-      reasons.push(`Moderat varm klassifisering: ${classification.category}.`);
+      reasons.push({ text: `Moderat varm klassifisering: ${classification.category}.`, weight: 18 });
     }
   }
 
   if (hasUnsentDraft) {
     score += 10;
-    reasons.push('Har meldingsutkast som ikke er markert sendt.');
+    reasons.push({ text: 'Har meldingsutkast som ikke er markert sendt.', weight: 10 });
   }
 
   if (linkedCaseCount > 0) {
     score += 8;
-    reasons.push('Koblet til sak/adresse.');
+    reasons.push({ text: 'Koblet til sak/adresse.', weight: 8 });
+  }
+
+  if (latestAttempt && diffDays(latestAttempt.created_at, today) === 0) {
+    reasons.push({ text: `${getAttemptLabel(latestAttempt.activity_type)} i dag.`, weight: 1 });
   }
 
   const isEligible = score >= 35 || Boolean(openFollowUp?.due_date && openFollowUp.due_date <= todayInput);
   if (!isEligible) return null;
 
-  const { priority, priorityLabel } = getPriority(score);
-  const suggestedDueDate = openFollowUp?.due_date && openFollowUp.due_date >= todayInput ? openFollowUp.due_date : toDateInput(addDays(today, 2));
+  const { priority, priorityLabel } = getPriority(score, hasConfirmedHumanSignal);
+  const suggestedDueDate = openFollowUp?.due_date && openFollowUp.due_date >= todayInput ? openFollowUp.due_date : toDateInput(addDays(today, 7));
 
   return {
     contact,
     score,
     priority,
     priorityLabel,
-    reasons: reasons.slice(0, 4),
+    reasons: reasons
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, 4)
+      .map((reason) => reason.text),
     recommendedAction: getRecommendedAction(text, classification, openFollowUp),
     suggestedFollowUpTitle: openFollowUp?.title ?? getSuggestedTitle(contact, text, classification),
     suggestedDueDate,
     daysSinceLastContact,
+    latestNote: getLatestNoteSnippet(contact.notes),
+    latestAttempt: latestAttempt
+      ? {
+          type: latestAttempt.activity_type,
+          label: getAttemptLabel(latestAttempt.activity_type),
+          created_at: latestAttempt.created_at,
+        }
+      : null,
     latestClassification: classification
       ? {
           category: classification.category,
@@ -269,6 +314,26 @@ function buildRecallItem(input: {
   };
 }
 
+export async function getRecallSnoozedCount(): Promise<number> {
+  const user = await getAuthenticatedUser();
+  if (!user) return 0;
+
+  try {
+    const supabase = createServiceRoleSupabaseClient();
+    const todayInput = toDateInput(new Date());
+    const { count, error } = await supabase
+      .from('contacts')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('snoozed_until', todayInput);
+
+    if (error) throw error;
+    return count ?? 0;
+  } catch (error) {
+    throwRecallError('getRecallSnoozedCount', error);
+  }
+}
+
 export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
   const user = await getAuthenticatedUser();
   if (!user) return [];
@@ -278,7 +343,7 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
     const today = new Date();
     const todayInput = toDateInput(today);
 
-    const [contactsResult, classificationsResult, followUpsResult, draftsResult, caseContactsResult, repliesResult] = await Promise.all([
+    const [contactsResult, classificationsResult, followUpsResult, draftsResult, caseContactsResult, repliesResult, activitiesResult] = await Promise.all([
       supabase.from('contacts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase
         .from('contact_classifications')
@@ -293,6 +358,12 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
         .select('contact_id, reply_category, next_step, reply_text, created_at, contacts!inner(user_id)')
         .eq('contacts.user_id', user.id)
         .order('created_at', { ascending: false }),
+      supabase
+        .from('contact_activities')
+        .select('contact_id, activity_type, body, created_at')
+        .eq('user_id', user.id)
+        .in('activity_type', ['contacted', 'contacted_spoke', 'contacted_left_message', 'contacted_no_answer'])
+        .order('created_at', { ascending: false }),
     ]);
 
     if (contactsResult.error) throw contactsResult.error;
@@ -301,6 +372,7 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
     if (draftsResult.error) throw draftsResult.error;
     if (caseContactsResult.error) throw caseContactsResult.error;
     if (repliesResult.error) throw repliesResult.error;
+    if (activitiesResult.error) throw activitiesResult.error;
 
     const latestClassificationByContact = new Map<string, ClassificationRow>();
     ((classificationsResult.data ?? []) as ClassificationRow[]).forEach((row) => {
@@ -329,6 +401,11 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
       if (!latestReplyByContact.has(row.contact_id)) latestReplyByContact.set(row.contact_id, row);
     });
 
+    const latestAttemptByContact = new Map<string, ActivityRow>();
+    ((activitiesResult.data ?? []) as ActivityRow[]).forEach((row) => {
+      if (!latestAttemptByContact.has(row.contact_id)) latestAttemptByContact.set(row.contact_id, row);
+    });
+
     return ((contactsResult.data ?? []) as Contact[])
       .map((contact) =>
         buildRecallItem({
@@ -338,6 +415,7 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
           hasUnsentDraft: Boolean(draftByContact.get(contact.id) && !draftByContact.get(contact.id)?.sent),
           linkedCaseCount: caseCountByContact.get(contact.id) ?? 0,
           latestReply: latestReplyByContact.get(contact.id) ?? null,
+          latestAttempt: latestAttemptByContact.get(contact.id) ?? null,
           today,
           todayInput,
         }),

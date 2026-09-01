@@ -2,12 +2,12 @@ import Link from 'next/link';
 import { Shell } from '@/components/shell';
 import { SectionCard } from '@/components/section-card';
 import { RecallQueueClient } from '@/components/recall-queue-client';
-import { getRecallQueue } from '@/lib/recall';
+import { getRecallQueue, getRecallSnoozedCount } from '@/lib/recall';
 import { requirePageUser } from '@/lib/page-auth';
 
 export default async function RecallPage() {
   await requirePageUser();
-  const items = await getRecallQueue(60);
+  const [items, snoozedCount] = await Promise.all([getRecallQueue(60), getRecallSnoozedCount()]);
   const high = items.filter((item) => item.priority === 'high').length;
   const medium = items.filter((item) => item.priority === 'medium').length;
   const withNoFollowUp = items.filter((item) => !item.openFollowUp).length;
@@ -44,6 +44,11 @@ export default async function RecallPage() {
         </div>
 
         <SectionCard title="Prioritert nå">
+          {snoozedCount > 0 ? (
+            <div className="mb-4 rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] px-4 py-3 text-sm text-[#d4c4b2]">
+              Utsatt: {snoozedCount} kontakter er skjult fra køen til valgt dato.
+            </div>
+          ) : null}
           {items.length ? (
             <RecallQueueClient items={items} />
           ) : (

@@ -19,8 +19,11 @@ create table if not exists contacts (
   source text,
   status_raw text,
   last_contacted_at timestamptz,
+  snoozed_until date,
   created_at timestamptz default now()
 );
+
+alter table contacts add column if not exists snoozed_until date;
 
 create table if not exists contact_classifications (
   id uuid primary key default gen_random_uuid(),
@@ -119,6 +122,7 @@ create table if not exists case_contacts (
   unique(case_id, contact_id)
 );
 
+create index if not exists contacts_user_id_snoozed_until_idx on contacts(user_id, snoozed_until);
 create index if not exists contact_activities_user_id_created_at_idx on contact_activities(user_id, created_at desc);
 create index if not exists contact_activities_contact_id_created_at_idx on contact_activities(contact_id, created_at desc);
 create index if not exists follow_ups_user_id_due_date_idx on follow_ups(user_id, due_date asc);

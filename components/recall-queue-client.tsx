@@ -6,7 +6,7 @@ import { useState } from 'react';
 import type { RecallQueueItem } from '@/lib/recall';
 
 function priorityClass(priority: RecallQueueItem['priority']) {
-  if (priority === 'high') return 'border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-100';
+  if (priority === 'high') return 'border-[rgba(183,146,104,0.36)] bg-[rgba(183,146,104,0.12)] text-[#f3dfc2]';
   if (priority === 'medium') return 'border-[rgba(183,146,104,0.22)] bg-[rgba(183,146,104,0.10)] text-[#f0dcc3]';
   return 'border-white/6 bg-white/[0.03] text-[#d4c4b2]';
 }
@@ -14,10 +14,16 @@ function priorityClass(priority: RecallQueueItem['priority']) {
 function formatDate(date: string | null | undefined) {
   if (!date) return 'Uten dato';
   try {
-    return new Intl.DateTimeFormat('no-NO', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(date));
+    return new Intl.DateTimeFormat('nb-NO', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(date));
   } catch {
     return date;
   }
+}
+
+function formatLastContact(item: RecallQueueItem) {
+  if (!item.contact.last_contacted_at) return 'Ingen registrert kontakt';
+  const date = formatDate(item.contact.last_contacted_at);
+  return item.daysSinceLastContact === null ? date : `${date} · ${item.daysSinceLastContact} dager`;
 }
 
 function contactSubtitle(item: RecallQueueItem) {
@@ -25,13 +31,25 @@ function contactSubtitle(item: RecallQueueItem) {
   return parts.length ? parts.join(' · ') : 'Ingen status';
 }
 
+function cleanPhone(value: string) {
+  return value.replace(/\s+/g, '');
+}
+
+type ContactOutcome = 'spoke' | 'left_message' | 'no_answer';
+
 export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
   const router = useRouter();
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, { type: 'success' | 'error'; text: string }>>({});
+  const [outcomeContactId, setOutcomeContactId] = useState<string | null>(null);
+  const [snoozeContactId, setSnoozeContactId] = useState<string | null>(null);
 
   function setItemMessage(contactId: string, type: 'success' | 'error', text: string) {
     setMessages((current) => ({ ...current, [contactId]: { type, text } }));
+  }
+
+  function isContactBusy(contactId: string) {
+    return loadingKey?.startsWith(`${contactId}:`) ?? false;
   }
 
   async function createFollowUp(item: RecallQueueItem) {
@@ -47,7 +65,7 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
           contactId: item.contact.id,
           title: item.suggestedFollowUpTitle,
           dueDate: item.suggestedDueDate,
-          note: `Fra recall-kø: ${item.reasons.join(' · ')}`,
+          note: `Fra oppfølgingskø: ${item.reasons.join(' · ')}`,
         }),
       });
       const json = await response.json();
@@ -83,8 +101,8 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
     }
   }
 
-  async function markContacted(item: RecallQueueItem) {
-    const key = `${item.contact.id}:contacted`;
+  async function markContacted(item: RecallQueueItem, outcome: ContactOutcome) {
+    const key = `${item.contact.id}:contacted:${outcome}`;
     setLoadingKey(key);
     setItemMessage(item.contact.id, 'success', '');
 
@@ -92,14 +110,38 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
       const response = await fetch('/api/recall/actions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contactId: item.contact.id, action: 'mark_contacted' }),
+        body: JSON.stringify({ contactId: item.contact.id, action: 'mark_contacted', outcome }),
       });
       const json = await response.json();
-      if (!response.ok) throw new Error(json.error || 'Kunne ikke markere som kontaktet.');
-      setItemMessage(item.contact.id, 'success', 'Kontakt markert som fulgt opp.');
+      if (!response.ok) throw new Error(json.error || 'Kunne ikke registrere utfallet.');
+      setItemMessage(item.contact.id, 'success', json.message || 'Utfallet er registrert.');
+      setOutcomeContactId(null);
       router.refresh();
     } catch (error) {
-      setItemMessage(item.contact.id, 'error', error instanceof Error ? error.message : 'Kunne ikke markere som kontaktet.');
+      setItemMessage(item.contact.id, 'error', error instanceof Error ? error.message : 'Kunne ikke registrere utfallet.');
+    } finally {
+      setLoadingKey(null);
+    }
+  }
+
+  async function snoozeContact(item: RecallQueueItem, months: 1 | 3 | 6 | 12) {
+    const key = `${item.contact.id}:snooze:${months}`;
+    setLoadingKey(key);
+    setItemMessage(item.contact.id, 'success', '');
+
+    try {
+      const response = await fetch('/api/recall/actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contactId: item.contact.id, action: 'snooze', months }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Kunne ikke utsette kontakten.');
+      setItemMessage(item.contact.id, 'success', months === 12 ? 'Kontakt skjult i 12 måneder.' : `Kontakt utsatt i ${months} måneder.`);
+      setSnoozeContactId(null);
+      router.refresh();
+    } catch (error) {
+      setItemMessage(item.contact.id, 'error', error instanceof Error ? error.message : 'Kunne ikke utsette kontakten.');
     } finally {
       setLoadingKey(null);
     }
@@ -109,9 +151,11 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
     <div className="space-y-4">
       {items.map((item) => {
         const message = messages[item.contact.id];
+        const contactBusy = isContactBusy(item.contact.id);
         const followUpLoading = loadingKey === `${item.contact.id}:follow-up`;
         const messageLoading = loadingKey === `${item.contact.id}:message`;
-        const contactedLoading = loadingKey === `${item.contact.id}:contacted`;
+        const outcomeOpen = outcomeContactId === item.contact.id;
+        const snoozeOpen = snoozeContactId === item.contact.id;
 
         return (
           <article key={item.contact.id} className="rounded-[28px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.025)] p-5 md:p-6">
@@ -124,13 +168,28 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
                   <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.16em] ${priorityClass(item.priority)}`}>
                     {item.priorityLabel}
                   </span>
-                  <span className="text-xs uppercase tracking-[0.16em] text-[#8e7c69]">Score {item.score}</span>
+                  {item.latestAttempt ? <span className="text-xs uppercase tracking-[0.16em] text-[#c6a884]">{item.latestAttempt.label}</span> : null}
                 </div>
-                <p className="mt-2 text-sm text-[#8e7c69]">{contactSubtitle(item)}</p>
+                <p className="mt-2 text-sm text-[#9f907f]">{contactSubtitle(item)}</p>
 
-                <div className="mt-5 grid gap-3 md:grid-cols-[1fr_0.85fr]">
+                <div className="mt-4 flex flex-wrap gap-2 text-sm">
+                  {item.contact.phone ? (
+                    <a href={`tel:${cleanPhone(item.contact.phone)}`} className="rounded-full border border-[rgba(183,146,104,0.28)] bg-[rgba(183,146,104,0.10)] px-3 py-1.5 font-medium text-[#f0dcc3] transition hover:bg-[rgba(183,146,104,0.18)]">
+                      Ring {item.contact.phone}
+                    </a>
+                  ) : (
+                    <span className="rounded-full border border-[rgba(220,194,163,0.10)] px-3 py-1.5 text-[#9f907f]">Ingen telefon</span>
+                  )}
+                  {item.contact.email ? (
+                    <a href={`mailto:${item.contact.email}`} className="rounded-full border border-[rgba(220,194,163,0.10)] px-3 py-1.5 text-[#d4c4b2] transition hover:bg-[rgba(255,245,232,0.04)]">
+                      {item.contact.email}
+                    </a>
+                  ) : null}
+                </div>
+
+                <div className="mt-5 grid gap-3 md:grid-cols-[1fr_0.9fr]">
                   <div className="rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-[#8e7c69]">Hvorfor nå</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-[#9f907f]">Hvorfor nå</p>
                     <ul className="mt-3 space-y-2 text-sm leading-6 text-[#d4c4b2]">
                       {item.reasons.map((reason) => (
                         <li key={reason} className="flex gap-2">
@@ -142,27 +201,37 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
                   </div>
 
                   <div className="rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-[#8e7c69]">Neste handling</p>
-                    <p className="mt-3 text-sm leading-6 text-white">{item.recommendedAction}</p>
-                    <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-[#b8aa98]">
+                    <p className="text-xs uppercase tracking-[0.18em] text-[#9f907f]">Arbeid</p>
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-[#b8aa98]">
                       <div>
-                        <p className="uppercase tracking-[0.16em] text-[#8e7c69]">Oppfølging</p>
+                        <p className="uppercase tracking-[0.16em] text-[#9f907f]">Siste kontakt</p>
+                        <p className="mt-1 text-white">{formatLastContact(item)}</p>
+                      </div>
+                      <div>
+                        <p className="uppercase tracking-[0.16em] text-[#9f907f]">Oppfølging</p>
                         <p className="mt-1 text-white">{item.openFollowUp ? formatDate(item.openFollowUp.due_date) : formatDate(item.suggestedDueDate)}</p>
                       </div>
-                      <div>
-                        <p className="uppercase tracking-[0.16em] text-[#8e7c69]">Saker</p>
-                        <p className="mt-1 text-white">{item.linkedCaseCount}</p>
-                      </div>
                     </div>
+                    {item.latestNote ? (
+                      <div className="mt-4 border-t border-[rgba(220,194,163,0.08)] pt-4">
+                        <p className="text-xs uppercase tracking-[0.18em] text-[#9f907f]">Siste notat</p>
+                        <p
+                          className="mt-2 overflow-hidden text-sm leading-6 text-[#d4c4b2]"
+                          style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
+                        >
+                          {item.latestNote}
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
 
-              <div className="flex w-full flex-col gap-3 lg:w-[220px]">
+              <div className="flex w-full flex-col gap-3 lg:w-[230px]">
                 <button
                   type="button"
                   onClick={() => createFollowUp(item)}
-                  disabled={Boolean(loadingKey)}
+                  disabled={contactBusy}
                   className="rounded-2xl border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.16)] px-4 py-3 text-sm font-medium text-white transition hover:bg-[rgba(183,146,104,0.24)] disabled:cursor-not-allowed disabled:opacity-55"
                 >
                   {followUpLoading ? 'Lagrer…' : item.openFollowUp ? 'Lag ny oppfølging' : 'Lag oppfølging'}
@@ -170,19 +239,43 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
                 <button
                   type="button"
                   onClick={() => generateMessage(item)}
-                  disabled={Boolean(loadingKey)}
+                  disabled={contactBusy}
                   className="rounded-2xl border border-[rgba(220,194,163,0.14)] bg-[rgba(255,245,232,0.03)] px-4 py-3 text-sm font-medium text-white transition hover:bg-[rgba(255,245,232,0.06)] disabled:cursor-not-allowed disabled:opacity-55"
                 >
                   {messageLoading ? 'Lager…' : item.hasUnsentDraft ? 'Lag nytt utkast' : 'Lag melding'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => markContacted(item)}
-                  disabled={Boolean(loadingKey)}
+                  onClick={() => setOutcomeContactId(outcomeOpen ? null : item.contact.id)}
+                  disabled={contactBusy}
                   className="rounded-2xl border border-[rgba(220,194,163,0.14)] bg-[rgba(255,245,232,0.03)] px-4 py-3 text-sm font-medium text-white transition hover:bg-[rgba(255,245,232,0.06)] disabled:cursor-not-allowed disabled:opacity-55"
                 >
-                  {contactedLoading ? 'Markerer…' : 'Marker kontaktet'}
+                  Registrer forsøk
                 </button>
+                {outcomeOpen ? (
+                  <div className="space-y-2 rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.025)] p-3">
+                    <button type="button" onClick={() => markContacted(item, 'spoke')} disabled={contactBusy} className="w-full rounded-xl px-3 py-2 text-left text-sm text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)] disabled:opacity-55">Snakket med</button>
+                    <button type="button" onClick={() => markContacted(item, 'left_message')} disabled={contactBusy} className="w-full rounded-xl px-3 py-2 text-left text-sm text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)] disabled:opacity-55">La igjen beskjed</button>
+                    <button type="button" onClick={() => markContacted(item, 'no_answer')} disabled={contactBusy} className="w-full rounded-xl px-3 py-2 text-left text-sm text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)] disabled:opacity-55">Ikke svar</button>
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setSnoozeContactId(snoozeOpen ? null : item.contact.id)}
+                  disabled={contactBusy}
+                  className="rounded-2xl border border-[rgba(220,194,163,0.14)] bg-[rgba(255,245,232,0.03)] px-4 py-3 text-sm font-medium text-[#d4c4b2] transition hover:bg-[rgba(255,245,232,0.06)] disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  Utsett
+                </button>
+                {snoozeOpen ? (
+                  <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.025)] p-3">
+                    {([1, 3, 6, 12] as const).map((months) => (
+                      <button key={months} type="button" onClick={() => snoozeContact(item, months)} disabled={contactBusy} className="rounded-xl px-3 py-2 text-sm text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)] disabled:opacity-55">
+                        {months === 12 ? 'Ikke relevant nå' : `${months} mnd`}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
                 <Link href={`/contacts/${item.contact.id}` as any} className="rounded-2xl border border-transparent px-4 py-3 text-center text-sm font-medium text-[#d4c4b2] transition hover:border-[rgba(220,194,163,0.10)] hover:bg-[rgba(255,245,232,0.03)]">
                   Åpne kontakt
                 </Link>

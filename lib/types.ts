@@ -9,6 +9,7 @@ export type Contact = {
   source: string | null;
   status_raw: string | null;
   last_contacted_at: string | null;
+  snoozed_until: string | null;
   created_at: string;
 };
 
