@@ -2,7 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Kolman',
+  title: 'Kolman Eiendom',
   description: 'Webverktøy for meglere som jobber med leads, oppfølging og kontaktarbeid.',
 };
 

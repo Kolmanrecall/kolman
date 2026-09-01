@@ -55,6 +55,14 @@ type CaseContactRow = {
   contact_id: string;
 };
 
+type ReplyRow = {
+  contact_id: string;
+  reply_category: string;
+  next_step: string;
+  reply_text: string;
+  created_at: string;
+};
+
 function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
@@ -80,6 +88,30 @@ function toDateInput(date: Date) {
 function includesAny(value: string, words: string[]) {
   const normalized = value.toLowerCase();
   return words.some((word) => normalized.includes(word));
+}
+
+const stopSignals = [
+  'ikke interessert',
+  'ikke aktuelt',
+  'stopp oppfølging',
+  'stopp',
+  'ikke kontakt',
+  'ikke ring',
+  'fjern meg',
+  'avmeldt',
+  'reservert',
+  'solgt via annen megler',
+  'annen megler',
+];
+
+function hasStopSignal(value: string | null | undefined) {
+  if (!value) return false;
+  return includesAny(value, stopSignals);
+}
+
+function throwRecallError(scope: string, error: unknown): never {
+  console.error(`[Kolman recall] ${scope}`, error);
+  throw new Error('Vi får ikke hentet oppfølgingskøen akkurat nå. Prøv igjen om litt.');
 }
 
 function firstName(fullName: string) {
@@ -129,12 +161,19 @@ function buildRecallItem(input: {
   openFollowUps: FollowUpRow[];
   hasUnsentDraft: boolean;
   linkedCaseCount: number;
+  latestReply: ReplyRow | null;
   today: Date;
   todayInput: string;
 }): RecallQueueItem | null {
-  const { contact, classification, openFollowUps, hasUnsentDraft, linkedCaseCount, today, todayInput } = input;
+  const { contact, classification, openFollowUps, hasUnsentDraft, linkedCaseCount, latestReply, today, todayInput } = input;
   const reasons: string[] = [];
   const text = `${contact.status_raw ?? ''} ${contact.notes ?? ''}`;
+  const replyText = `${latestReply?.reply_category ?? ''} ${latestReply?.next_step ?? ''} ${latestReply?.reply_text ?? ''}`;
+
+  if (hasStopSignal(text) || hasStopSignal(replyText)) {
+    return null;
+  }
+
   let score = 0;
 
   const openFollowUp = chooseOpenFollowUp(openFollowUps, todayInput);
@@ -150,6 +189,9 @@ function buildRecallItem(input: {
       score -= 10;
       reasons.push('Har allerede en planlagt oppfølging.');
     }
+  } else if (openFollowUp) {
+    score += 6;
+    reasons.push('Har åpen oppfølging uten dato.');
   } else {
     score += 16;
     reasons.push('Ingen åpen oppfølging ligger klar.');
@@ -236,7 +278,7 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
     const today = new Date();
     const todayInput = toDateInput(today);
 
-    const [contactsResult, classificationsResult, followUpsResult, draftsResult, caseContactsResult] = await Promise.all([
+    const [contactsResult, classificationsResult, followUpsResult, draftsResult, caseContactsResult, repliesResult] = await Promise.all([
       supabase.from('contacts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase
         .from('contact_classifications')
@@ -246,6 +288,11 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
       supabase.from('follow_ups').select('id, contact_id, title, due_date, status, created_at').eq('user_id', user.id).neq('status', 'completed'),
       supabase.from('message_drafts').select('contact_id, sent, approved, created_at').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('case_contacts').select('contact_id').eq('user_id', user.id),
+      supabase
+        .from('contact_replies')
+        .select('contact_id, reply_category, next_step, reply_text, created_at, contacts!inner(user_id)')
+        .eq('contacts.user_id', user.id)
+        .order('created_at', { ascending: false }),
     ]);
 
     if (contactsResult.error) throw contactsResult.error;
@@ -253,6 +300,7 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
     if (followUpsResult.error) throw followUpsResult.error;
     if (draftsResult.error) throw draftsResult.error;
     if (caseContactsResult.error) throw caseContactsResult.error;
+    if (repliesResult.error) throw repliesResult.error;
 
     const latestClassificationByContact = new Map<string, ClassificationRow>();
     ((classificationsResult.data ?? []) as ClassificationRow[]).forEach((row) => {
@@ -276,6 +324,11 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
       caseCountByContact.set(row.contact_id, (caseCountByContact.get(row.contact_id) ?? 0) + 1);
     });
 
+    const latestReplyByContact = new Map<string, ReplyRow>();
+    ((repliesResult.data ?? []) as ReplyRow[]).forEach((row) => {
+      if (!latestReplyByContact.has(row.contact_id)) latestReplyByContact.set(row.contact_id, row);
+    });
+
     return ((contactsResult.data ?? []) as Contact[])
       .map((contact) =>
         buildRecallItem({
@@ -284,6 +337,7 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
           openFollowUps: followUpsByContact.get(contact.id) ?? [],
           hasUnsentDraft: Boolean(draftByContact.get(contact.id) && !draftByContact.get(contact.id)?.sent),
           linkedCaseCount: caseCountByContact.get(contact.id) ?? 0,
+          latestReply: latestReplyByContact.get(contact.id) ?? null,
           today,
           todayInput,
         }),
@@ -291,7 +345,7 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
       .filter((item): item is RecallQueueItem => Boolean(item))
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
-  } catch {
-    return [];
+  } catch (error) {
+    throwRecallError('getRecallQueue', error);
   }
 }

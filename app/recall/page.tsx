@@ -3,8 +3,10 @@ import { Shell } from '@/components/shell';
 import { SectionCard } from '@/components/section-card';
 import { RecallQueueClient } from '@/components/recall-queue-client';
 import { getRecallQueue } from '@/lib/recall';
+import { requirePageUser } from '@/lib/page-auth';
 
 export default async function RecallPage() {
+  await requirePageUser();
   const items = await getRecallQueue(60);
   const high = items.filter((item) => item.priority === 'high').length;
   const medium = items.filter((item) => item.priority === 'medium').length;
@@ -14,11 +16,11 @@ export default async function RecallPage() {
     <Shell>
       <div className="space-y-8">
         <div className="kolman-card overflow-hidden p-9 md:p-12">
-          <p className="text-sm uppercase tracking-[0.24em] text-[#c6a884]">Recall</p>
+          <p className="text-sm uppercase tracking-[0.24em] text-[#c6a884]">Kolman</p>
           <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <h1 className="text-4xl font-semibold tracking-tight text-white md:text-5xl">Oppfølgingskø</h1>
-              <p className="mt-3 max-w-2xl text-base text-[#d4c4b2] md:text-lg">Kontakter som bør følges opp nå, rangert etter signaler og manglende neste steg.</p>
+              <p className="mt-3 max-w-2xl text-base text-[#d4c4b2] md:text-lg">Kontakter som bør følges opp nå, rangert etter tydelige signaler og manglende neste steg.</p>
             </div>
             <Link href="/contacts" className="rounded-full border border-[rgba(220,194,163,0.10)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)]">
               Alle kontakter

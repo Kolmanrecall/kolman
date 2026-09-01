@@ -7,6 +7,7 @@ import { FollowUpList } from '@/components/follow-up-list';
 import { CaseUpdateForm } from '@/components/case-update-form';
 import { getCaseFollowUps, getPropertyCaseById } from '@/lib/data';
 import { getCaseStatusLabel, getCaseStatusTone } from '@/lib/case-status';
+import { requirePageUser } from '@/lib/page-auth';
 
 function formatDate(date: string | null) {
   if (!date) return 'Ingen dato';
@@ -16,6 +17,7 @@ function formatDate(date: string | null) {
 }
 
 export default async function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePageUser();
   const { id } = await params;
   const propertyCase = await getPropertyCaseById(id);
 

@@ -11,6 +11,7 @@ import { FollowUpList } from '@/components/follow-up-list';
 import { ContactCasePanel } from '@/components/contact-case-panel';
 import { getContactActivities, getContactById, getContactFollowUps, getContactPropertyCases, getLatestClassification, getLatestMessageDraft, getLatestReplyAnalysis, getPropertyCases } from '@/lib/data';
 import { StatusBadge, toneFromStatus } from '@/components/status-badge';
+import { requirePageUser } from '@/lib/page-auth';
 
 function formatDate(date: string | null) {
   if (!date) return 'Ingen dato';
@@ -20,6 +21,7 @@ function formatDate(date: string | null) {
 }
 
 export default async function ContactDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePageUser();
   const { id } = await params;
   const contact = await getContactById(id);
 

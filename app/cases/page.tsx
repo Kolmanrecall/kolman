@@ -5,8 +5,10 @@ import { CaseForm } from '@/components/case-form';
 import { CaseList } from '@/components/case-list';
 import { getPropertyCases } from '@/lib/data';
 import { isOpenCaseStatus } from '@/lib/case-status';
+import { requirePageUser } from '@/lib/page-auth';
 
 export default async function CasesPage() {
+  await requirePageUser();
   const cases = await getPropertyCases();
   const activeCases = cases.filter((item) => isOpenCaseStatus(item.status));
 

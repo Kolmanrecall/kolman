@@ -3,8 +3,10 @@ import { Shell } from '@/components/shell';
 import { SectionCard } from '@/components/section-card';
 import { ContactsTableClient } from '@/components/contacts-table-client';
 import { getContacts } from '@/lib/data';
+import { requirePageUser } from '@/lib/page-auth';
 
 export default async function ContactsPage() {
+  await requirePageUser();
   const contacts = await getContacts();
   const uniqueCities = new Set(contacts.map((contact) => contact.city).filter(Boolean)).size;
   const warmSignals = contacts.filter((contact) => /warm|hot|vurderer|tidligere kunde/i.test(contact.status_raw ?? '')).length;

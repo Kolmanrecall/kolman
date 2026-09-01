@@ -14,6 +14,15 @@ async function getCurrentUserId() {
   return user?.id ?? null;
 }
 
+function isMissingRow(error: unknown) {
+  return Boolean(error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === 'PGRST116');
+}
+
+function throwDataError(scope: string, error: unknown): never {
+  console.error(`[Kolman data] ${scope}`, error);
+  throw new Error('Vi får ikke kontakt med dataene dine akkurat nå. Prøv igjen om litt.');
+}
+
 function normalizeFollowUps(rows: FollowUpRow[] | null | undefined): FollowUp[] {
   return (rows ?? []).map((row) => {
     const { contacts, ...followUp } = row;
@@ -38,8 +47,8 @@ export async function getContacts(): Promise<Contact[]> {
 
     if (error) throw error;
     return (data ?? []) as Contact[];
-  } catch {
-    return [];
+  } catch (error) {
+    throwDataError('getContacts', error);
   }
 }
 
@@ -58,8 +67,9 @@ export async function getContactById(id: string): Promise<Contact | null> {
 
     if (error) throw error;
     return data as Contact;
-  } catch {
-    return null;
+  } catch (error) {
+    if (isMissingRow(error)) return null;
+    throwDataError('getContactById', error);
   }
 }
 
@@ -80,8 +90,8 @@ export async function getLatestClassification(contactId: string) {
 
     if (error) throw error;
     return data;
-  } catch {
-    return null;
+  } catch (error) {
+    throwDataError('getLatestClassification', error);
   }
 }
 
@@ -113,6 +123,12 @@ export async function getDashboardStats() {
         .not('status', 'in', '(sold,lost,archived,closed)'),
     ]);
 
+    if (contactsResult.error) throw contactsResult.error;
+    if (classificationsResult.error) throw classificationsResult.error;
+    if (draftsResult.error) throw draftsResult.error;
+    if (followUpsResult.error) throw followUpsResult.error;
+    if (casesResult.error) throw casesResult.error;
+
     const dbContacts = contactsResult.count ?? 0;
     const dbWarm = (classificationsResult.data ?? []).filter((item: { warmth_score?: number | null }) => (item.warmth_score ?? 0) >= 7).length;
     const dbDrafts = draftsResult.count ?? 0;
@@ -126,8 +142,8 @@ export async function getDashboardStats() {
       openFollowUps: dbFollowUps,
       activeCases: dbCases,
     };
-  } catch {
-    return { totalContacts: 0, warmOpportunities: 0, draftsCreated: 0, openFollowUps: 0, activeCases: 0 };
+  } catch (error) {
+    throwDataError('getDashboardStats', error);
   }
 }
 
@@ -148,8 +164,8 @@ export async function getLatestMessageDraft(contactId: string) {
 
     if (error) throw error;
     return data;
-  } catch {
-    return null;
+  } catch (error) {
+    throwDataError('getLatestMessageDraft', error);
   }
 }
 
@@ -170,8 +186,8 @@ export async function getLatestReplyAnalysis(contactId: string) {
 
     if (error) throw error;
     return data;
-  } catch {
-    return null;
+  } catch (error) {
+    throwDataError('getLatestReplyAnalysis', error);
   }
 }
 
@@ -191,8 +207,8 @@ export async function getContactActivities(contactId: string): Promise<ContactAc
 
     if (error) throw error;
     return (data ?? []) as ContactActivity[];
-  } catch {
-    return [];
+  } catch (error) {
+    throwDataError('getContactActivities', error);
   }
 }
 
@@ -214,8 +230,8 @@ export async function getUpcomingFollowUps(limit = 10): Promise<FollowUp[]> {
 
     if (error) throw error;
     return normalizeFollowUps(data as FollowUpRow[]);
-  } catch {
-    return [];
+  } catch (error) {
+    throwDataError('getUpcomingFollowUps', error);
   }
 }
 
@@ -238,8 +254,8 @@ export async function getContactFollowUps(contactId: string): Promise<FollowUp[]
 
     if (error) throw error;
     return normalizeFollowUps(data as FollowUpRow[]);
-  } catch {
-    return [];
+  } catch (error) {
+    throwDataError('getContactFollowUps', error);
   }
 }
 
@@ -287,8 +303,8 @@ export async function getPropertyCases(): Promise<PropertyCase[]> {
     });
 
     return caseRows.map((item) => ({ ...item, contacts: linksByCase.get(item.id) ?? [] }));
-  } catch {
-    return [];
+  } catch (error) {
+    throwDataError('getPropertyCases', error);
   }
 }
 
@@ -317,8 +333,9 @@ export async function getPropertyCaseById(id: string): Promise<PropertyCase | nu
     if (linksError) throw linksError;
 
     return { ...(propertyCase as PropertyCase), contacts: normalizeCaseContacts(links as PropertyCaseContact[]) };
-  } catch {
-    return null;
+  } catch (error) {
+    if (isMissingRow(error)) return null;
+    throwDataError('getPropertyCaseById', error);
   }
 }
 
@@ -351,8 +368,8 @@ export async function getCaseFollowUps(caseId: string): Promise<FollowUp[]> {
 
     if (error) throw error;
     return normalizeFollowUps(data as FollowUpRow[]);
-  } catch {
-    return [];
+  } catch (error) {
+    throwDataError('getCaseFollowUps', error);
   }
 }
 
@@ -375,7 +392,7 @@ export async function getContactPropertyCases(contactId: string): Promise<Proper
       if (!link.case) return [];
       return [{ ...link.case, contacts: [link] }];
     });
-  } catch {
-    return [];
+  } catch (error) {
+    throwDataError('getContactPropertyCases', error);
   }
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getAllowedAccessEmails, isAllowedAccessEmail } from '@/lib/access-control';
+import { isAccessListConfigured, isAllowedAccessEmail } from '@/lib/access-control';
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -9,16 +9,17 @@ const bodySchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const { email } = bodySchema.parse(await request.json());
-    const allowedEmails = getAllowedAccessEmails();
+
+    if (!isAccessListConfigured()) {
+      return NextResponse.json(
+        { allowed: false, error: 'Tilgang er ikke satt opp ennå.' },
+        { status: 403 },
+      );
+    }
 
     if (!isAllowedAccessEmail(email)) {
       return NextResponse.json(
-        {
-          allowed: false,
-          error: allowedEmails.length
-            ? 'Denne e-posten er ikke invitert til Kolman ennå.'
-            : 'Tilgangslisten er ikke satt opp ennå.',
-        },
+        { allowed: false, error: 'Denne e-posten har ikke tilgang til Kolman ennå.' },
         { status: 403 },
       );
     }

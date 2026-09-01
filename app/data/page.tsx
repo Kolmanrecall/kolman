@@ -1,6 +1,7 @@
 import { AccountDataPanel } from '@/components/account-data-panel';
 import { SectionCard } from '@/components/section-card';
 import { Shell } from '@/components/shell';
+import { requirePageUser } from '@/lib/page-auth';
 
 const points = [
   'Hver megler ser kun egne kontakter og egen import',
@@ -9,7 +10,8 @@ const points = [
   'Tilgang er begrenset til godkjente e-postadresser',
 ];
 
-export default function DataPage() {
+export default async function DataPage() {
+  await requirePageUser();
   return (
     <Shell>
       <div className="space-y-10">
@@ -36,12 +38,6 @@ export default function DataPage() {
             <AccountDataPanel />
           </SectionCard>
         </div>
-
-        <SectionCard title="Lukket første versjon" description="Tilgang gis til utvalgte meglere mens arbeidsflyten ferdigstilles.">
-          <div className="rounded-[28px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] p-6 text-sm leading-7 text-[#b8aa98]">
-            Kolman Eiendom brukes nå som en første operativ versjon. Før bred utrulling og integrasjoner bør databehandleravtale, rutiner for sletting og importansvar formaliseres tydeligere.
-          </div>
-        </SectionCard>
       </div>
     </Shell>
   );

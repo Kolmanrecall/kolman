@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
+import { isAllowedAccessEmail } from '@/lib/access-control';
 
 function requireEnv(name: string) {
   const value = process.env[name];
@@ -36,5 +37,6 @@ export async function getAuthenticatedUser() {
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
+  if (!isAllowedAccessEmail(data.user.email)) return null;
   return data.user;
 }
