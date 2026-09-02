@@ -2,20 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServiceRoleSupabaseClient } from '@/lib/supabase-server';
 import { requireApiUser } from '@/lib/auth-user';
+import { apiError } from '@/lib/api-error';
+
+const emptyToNull = (value: unknown) => {
+  if (typeof value !== 'string') return value ?? null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+};
+
+const nullableText = z.preprocess(emptyToNull, z.string().nullable().optional()).transform((value) => value ?? null);
+const nullableDate = z
+  .preprocess(emptyToNull, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Siste kontakt må være en gyldig dato.').nullable().optional())
+  .transform((value) => value ?? null);
 
 const rowSchema = z.object({
-  full_name: z.string().min(1),
-  email: z.string().email().optional().nullable(),
-  phone: z.string().optional().nullable(),
-  city: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-  source: z.string().optional().nullable(),
-  status_raw: z.string().optional().nullable(),
-  last_contacted_at: z.string().optional().nullable(),
+  full_name: z.string().trim().min(1, 'Alle rader må ha navn.'),
+  email: z.preprocess(emptyToNull, z.string().email('E-post må være gyldig.').nullable().optional()).transform((value) => value ?? null),
+  phone: nullableText,
+  city: nullableText,
+  notes: nullableText,
+  source: nullableText,
+  status_raw: nullableText,
+  last_contacted_at: nullableDate,
 });
 
 const bodySchema = z.object({
-  rows: z.array(rowSchema),
+  rows: z.array(rowSchema).min(1, 'Fant ingen kontakter å importere.').max(5000, 'Maks 5000 kontakter per import.'),
 });
 
 export async function POST(request: NextRequest) {
@@ -34,6 +46,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ inserted: data?.length ?? 0, contacts: data ?? [] });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Import feilet' }, { status: 400 });
+    return apiError(error, 'Importen feilet. Sjekk filen og prøv igjen.', 400, 'contacts:import');
   }
 }

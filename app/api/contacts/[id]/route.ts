@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createServiceRoleSupabaseClient } from '@/lib/supabase-server';
 import { requireApiUser } from '@/lib/auth-user';
 import { apiError } from '@/lib/api-error';
+import { createServiceRoleSupabaseClient } from '@/lib/supabase-server';
 
 const emptyToNull = (value: unknown) => {
   if (typeof value !== 'string') return value ?? null;
@@ -28,46 +28,28 @@ const contactSchema = z.object({
     .transform((value) => value ?? null),
 });
 
-export async function GET() {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { user, errorResponse } = await requireApiUser();
   if (!user) return errorResponse!;
 
   try {
-    const supabase = createServiceRoleSupabaseClient();
-    const { data, error } = await supabase
-      .from('contacts')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return NextResponse.json({ contacts: data ?? [] });
-  } catch (error) {
-    return apiError(error, 'Kunne ikke hente kontaktene akkurat nå.', 500, 'contacts:list');
-  }
-}
-
-export async function POST(request: NextRequest) {
-  const { user, errorResponse } = await requireApiUser();
-  if (!user) return errorResponse!;
-
-  try {
+    const { id } = await params;
     const body = contactSchema.parse(await request.json());
     const supabase = createServiceRoleSupabaseClient();
 
     const { data: contact, error } = await supabase
       .from('contacts')
-      .insert({
-        user_id: user.id,
+      .update({
         full_name: body.full_name,
         email: body.email,
         phone: body.phone,
         city: body.city,
         status_raw: body.status_raw,
         notes: body.notes,
-        source: body.source ?? 'Manuelt lagt inn',
         last_contacted_at: body.last_contacted_at,
       })
+      .eq('id', id)
+      .eq('user_id', user.id)
       .select('*')
       .single();
 
@@ -75,6 +57,33 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ contact });
   } catch (error) {
-    return apiError(error, 'Kunne ikke opprette kontakten.', 400, 'contacts:create');
+    return apiError(error, 'Kunne ikke oppdatere kontakten.', 400, 'contacts:update');
+  }
+}
+
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { user, errorResponse } = await requireApiUser();
+  if (!user) return errorResponse!;
+
+  try {
+    const { id } = await params;
+    const supabase = createServiceRoleSupabaseClient();
+
+    const { data: existing, error: existingError } = await supabase
+      .from('contacts')
+      .select('id')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+    if (!existing) return NextResponse.json({ error: 'Fant ikke kontakten.' }, { status: 404 });
+
+    const { error } = await supabase.from('contacts').delete().eq('id', id).eq('user_id', user.id);
+    if (error) throw error;
+
+    return NextResponse.json({ deleted: true });
+  } catch (error) {
+    return apiError(error, 'Kunne ikke slette kontakten.', 400, 'contacts:delete');
   }
 }

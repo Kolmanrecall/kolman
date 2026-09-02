@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-user';
 import { createServiceRoleSupabaseClient } from '@/lib/supabase-server';
+import { apiError } from '@/lib/api-error';
 
 export async function PATCH(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { user, errorResponse } = await requireApiUser();
@@ -38,6 +39,6 @@ export async function PATCH(_: NextRequest, { params }: { params: Promise<{ id: 
 
     return NextResponse.json({ followUp });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Kunne ikke markere oppfølgingen som ferdig.' }, { status: 400 });
+    return apiError(error, 'Kunne ikke markere oppfølgingen som ferdig.', 400, 'follow-ups:complete');
   }
 }

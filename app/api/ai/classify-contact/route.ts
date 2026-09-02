@@ -4,6 +4,7 @@ import { createServiceRoleSupabaseClient } from '@/lib/supabase-server';
 import { getOpenAIClient } from '@/lib/openai';
 import { CLASSIFY_CONTACT_SYSTEM_PROMPT } from '@/prompts/real-estate';
 import { requireApiUser } from '@/lib/auth-user';
+import { apiError } from '@/lib/api-error';
 
 const bodySchema = z.object({
   contactId: z.string().uuid(),
@@ -128,6 +129,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ classification: data, mode: useFallback ? 'fallback' : 'openai' });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Klassifisering feilet' }, { status: 400 });
+    return apiError(error, 'Klassifisering feilet. Prøv igjen om litt.', 400, 'ai:classify-contact');
   }
 }

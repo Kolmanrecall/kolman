@@ -22,7 +22,12 @@ export default async function ContactsPage() {
               <h1 className="text-4xl font-semibold tracking-tight text-white">Kontakter</h1>
               <p className="mt-3 max-w-2xl text-[#d4c4b2]">Leads, tidligere kunder og relasjoner.</p>
             </div>
-            <div className="grid grid-cols-3 gap-3 text-sm md:min-w-[420px]">
+            <div className="space-y-4 md:min-w-[420px]">
+              <div className="flex flex-wrap gap-3 md:justify-end">
+                <Link href="/contacts/new" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Ny kontakt</Link>
+                <Link href="/import" className="rounded-full border border-[rgba(220,194,163,0.10)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)]">Importer</Link>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-sm">
               <div className="rounded-[22px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.03)] px-5 py-4 text-[#d4c4b2]">
                 <div className="text-xs uppercase tracking-[0.18em] text-[#8e7c69]">Totale</div>
                 <div className="mt-1 text-2xl font-semibold text-white">{contacts.length}</div>
@@ -34,6 +39,7 @@ export default async function ContactsPage() {
               <div className="rounded-[22px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.03)] px-5 py-4 text-[#d4c4b2]">
                 <div className="text-xs uppercase tracking-[0.18em] text-[#8e7c69]">Varme</div>
                 <div className="mt-1 text-2xl font-semibold text-white">{warmSignals}</div>
+              </div>
               </div>
             </div>
           </div>
@@ -49,7 +55,8 @@ export default async function ContactsPage() {
               <h2 className="text-2xl font-semibold text-white">Importer kontaktliste</h2>
               <p className="mt-3 max-w-xl text-[#d4c4b2]">CSV fra CRM, Excel eller Google Sheets.</p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/import" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Importer</Link>
+                <Link href="/contacts/new" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Ny kontakt</Link>
+                <Link href="/import" className="rounded-full border border-[rgba(220,194,163,0.10)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)]">Importer</Link>
               </div>
             </div>
           </SectionCard>

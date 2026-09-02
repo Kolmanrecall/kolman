@@ -5,6 +5,7 @@ import { ClassificationCard } from '@/components/classification-card';
 import { MessageDraftCard } from '@/components/message-draft-card';
 import { ReplyAnalysisCard } from '@/components/reply-analysis-card';
 import { ContactNotesCard } from '@/components/contact-notes-card';
+import { ContactForm } from '@/components/contact-form';
 import { ContactActivityTimeline } from '@/components/contact-activity-timeline';
 import { FollowUpForm } from '@/components/follow-up-form';
 import { FollowUpList } from '@/components/follow-up-list';
@@ -91,6 +92,10 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             <ContactNotesCard contactId={contact.id} initialNotes={contact.notes} />
           </SectionCard>
         </div>
+
+        <SectionCard title="Rediger kontakt" description="Rett navn, telefon, e-post, status og siste kontakt når data fra importen ikke stemmer.">
+          <ContactForm mode="edit" contact={contact} />
+        </SectionCard>
 
         <SectionCard title="Saker/adresser">
           <ContactCasePanel contactId={contact.id} cases={cases} linkedCases={linkedCases} />

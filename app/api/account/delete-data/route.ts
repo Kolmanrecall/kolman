@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { requireApiUser } from '@/lib/auth-user';
 import { createServiceRoleSupabaseClient } from '@/lib/supabase-server';
+import { apiError } from '@/lib/api-error';
 
 const bodySchema = z.object({
   confirmation: z.string().trim(),
@@ -56,9 +57,6 @@ export async function DELETE(request: NextRequest) {
 
     return Response.json({ ok: true });
   } catch (error) {
-    return Response.json(
-      { error: error instanceof Error ? error.message : 'Kunne ikke slette data.' },
-      { status: 400 },
-    );
+    return apiError(error, 'Kunne ikke slette data.', 400, 'account:delete-data');
   }
 }

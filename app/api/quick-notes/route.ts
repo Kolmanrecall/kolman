@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireApiUser } from '@/lib/auth-user';
 import { createServiceRoleSupabaseClient } from '@/lib/supabase-server';
+import { apiError } from '@/lib/api-error';
 
 const bodySchema = z.object({
   contactId: z.string().uuid(),
@@ -64,6 +65,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ contact: updatedContact, activity });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Kunne ikke lagre hurtignotatet.' }, { status: 400 });
+    return apiError(error, 'Kunne ikke lagre hurtignotatet.', 400, 'quick-notes:create');
   }
 }

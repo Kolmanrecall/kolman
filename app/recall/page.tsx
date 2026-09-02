@@ -53,8 +53,8 @@ export default async function RecallPage() {
             <RecallQueueClient items={items} />
           ) : (
             <div className="rounded-[28px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] p-8">
-              <h2 className="text-2xl font-semibold text-white">Ingen tydelige recall-kandidater</h2>
-              <p className="mt-3 max-w-xl text-[#d4c4b2]">Importer flere kontakter, legg inn siste kontakt eller bruk hurtignotat for å gi Kolman bedre signaler.</p>
+              <h2 className="text-2xl font-semibold text-white">Ingen kontakter i køen akkurat nå</h2>
+              <p className="mt-3 max-w-xl text-[#d4c4b2]">Når kontakter mangler neste steg, har gamle relasjoner eller får nye signaler, dukker de opp her.</p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link href="/import" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">
                   Importer

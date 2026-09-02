@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireApiUser } from '@/lib/auth-user';
 import { createServiceRoleSupabaseClient } from '@/lib/supabase-server';
 import { CASE_STATUS_VALUES } from '@/lib/case-status';
+import { apiError } from '@/lib/api-error';
 
 const bodySchema = z.object({
   title: z.string().trim().min(2, 'Saken må ha et navn.').max(180, 'Navnet er for langt.'),
@@ -44,9 +45,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     return NextResponse.json({ case: propertyCase });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Kunne ikke oppdatere saken.' },
-      { status: 400 },
-    );
+    return apiError(error, 'Kunne ikke oppdatere saken.', 400, 'cases:update');
   }
 }

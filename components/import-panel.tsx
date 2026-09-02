@@ -40,6 +40,9 @@ function cleanDate(value: string | undefined) {
   const raw = cleanValue(value);
   if (!raw) return null;
 
+  const isoDate = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoDate) return raw;
+
   const norwegianDate = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
   if (norwegianDate) {
     const [, day, month, year] = norwegianDate;
@@ -47,7 +50,7 @@ function cleanDate(value: string | undefined) {
     return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
 
-  return raw;
+  return null;
 }
 
 function detectDelimiter(headerLine: string) {
@@ -135,6 +138,8 @@ function parseCsvToRows(csvText: string): ParsedRow[] {
 function downloadTemplate() {
   const template = [
     'navn,email,telefon,by,status,notater,siste kontakt',
+    'Tidligere kunde,,,Oslo,Tidligere kunde,Ønsker rolig innsjekk,',
+    'Interessent visning,,,Bergen,Kjøper,Ser etter større bolig,12.08.2025',
   ].join('\n');
 
   const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' });
@@ -202,13 +207,13 @@ export function ImportPanel() {
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'Importen feilet.');
 
-      setMessage(`Import ferdig. ${json.inserted ?? rows.length} kontakter ble lagret.`);
+      setMessage(`Import ferdig. ${json.inserted ?? rows.length} kontakter ble lagret. Sender deg til Oppfølgingskøen.`);
       setFile(null);
       setPreviewCount(null);
       const input = document.getElementById('csv-upload') as HTMLInputElement | null;
       if (input) input.value = '';
       router.refresh();
-      setTimeout(() => router.push('/contacts'), 800);
+      setTimeout(() => router.push('/recall'), 800);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Importen feilet.');
     } finally {

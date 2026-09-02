@@ -4,6 +4,7 @@ import { createServiceRoleSupabaseClient } from '@/lib/supabase-server';
 import { getOpenAIClient } from '@/lib/openai';
 import { GENERATE_MESSAGE_SYSTEM_PROMPT } from '@/prompts/real-estate';
 import { requireApiUser } from '@/lib/auth-user';
+import { apiError } from '@/lib/api-error';
 
 const bodySchema = z.object({
   contactId: z.string().uuid(),
@@ -147,6 +148,6 @@ export async function POST(request: NextRequest) {
       mode: useFallback ? 'fallback' : 'openai',
     });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Generering av melding feilet' }, { status: 400 });
+    return apiError(error, 'Kunne ikke lage meldingen akkurat nå.', 400, 'ai:generate-message');
   }
 }

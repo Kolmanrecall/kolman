@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireApiUser } from '@/lib/auth-user';
 import { createServiceRoleSupabaseClient } from '@/lib/supabase-server';
+import { apiError } from '@/lib/api-error';
 
 const bodySchema = z.discriminatedUnion('action', [
   z.object({
@@ -109,6 +110,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, lastContactedAt: body.outcome === 'spoke' ? now : null, message: outcome.success });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Kunne ikke oppdatere oppfølgingskøen.' }, { status: 400 });
+    return apiError(error, 'Kunne ikke oppdatere oppfølgingskøen.', 400, 'recall:actions');
   }
 }

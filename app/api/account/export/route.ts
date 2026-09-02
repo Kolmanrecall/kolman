@@ -1,5 +1,6 @@
 import { requireApiUser } from '@/lib/auth-user';
 import { createServiceRoleSupabaseClient } from '@/lib/supabase-server';
+import { apiError } from '@/lib/api-error';
 
 type Row = Record<string, unknown>;
 
@@ -439,9 +440,6 @@ export async function GET() {
       },
     });
   } catch (error) {
-    return Response.json(
-      { error: error instanceof Error ? error.message : 'Kunne ikke eksportere data.' },
-      { status: 500 },
-    );
+    return apiError(error, 'Kunne ikke eksportere data akkurat nå.', 500, 'account:export');
   }
 }

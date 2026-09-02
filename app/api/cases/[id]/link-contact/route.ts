@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireApiUser } from '@/lib/auth-user';
 import { createServiceRoleSupabaseClient } from '@/lib/supabase-server';
+import { apiError } from '@/lib/api-error';
 
 const bodySchema = z.object({
   contactId: z.string().uuid(),
@@ -52,9 +53,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     return NextResponse.json({ link });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Kunne ikke koble kontakt til saken.' },
-      { status: 400 },
-    );
+    return apiError(error, 'Kunne ikke koble kontakten til saken.', 400, 'cases:link-contact');
   }
 }

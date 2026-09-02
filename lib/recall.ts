@@ -98,13 +98,24 @@ function toDateInput(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function includesAny(value: string, words: string[]) {
   const normalized = value.toLowerCase();
-  return words.some((word) => normalized.includes(word));
+  return words.some((word) => {
+    const normalizedWord = word.toLowerCase().trim();
+    if (!normalizedWord) return false;
+    const pattern = new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRegex(normalizedWord)}($|[^\\p{L}\\p{N}])`, 'iu');
+    return pattern.test(normalized);
+  });
 }
 
 const stoppingReplyCategories = ['ikke interessert', 'avmeldt', 'stopp'];
 const stoppingReplyNextSteps = ['stopp oppfølging', 'ikke kontakt', 'ikke ring', 'fjern meg'];
+const saleSignalWords = ['vurderer salg', 'selge', 'salg', 'selger', 'verdivurdering', 'verdiestimat', 'boligbytte'];
+const followUpSignalWords = ['varm', 'lead', 'interessert', 'senere', 'følg opp', 'ring', 'tidligere', 'kunde', 'kjøper'];
 
 function hasStructuredStopSignal(reply: ReplyRow | null) {
   if (!reply) return false;
@@ -241,10 +252,10 @@ function buildRecallItem(input: {
     hasConfirmedHumanSignal = true;
   }
 
-  if (includesAny(text, ['vurderer salg', 'selge', 'salg', 'selger', 'verdivurdering', 'verdiestimat', 'boligbytte'])) {
+  if (includesAny(text, saleSignalWords)) {
     score += 28;
     reasons.push({ text: 'Har salgssignal i status eller notater.', weight: 28 });
-  } else if (includesAny(text, ['varm', 'lead', 'interessert', 'senere', 'følg opp', 'ring'])) {
+  } else if (includesAny(text, followUpSignalWords)) {
     score += 18;
     reasons.push({ text: 'Har oppfølgingssignal i kontaktdata.', weight: 18 });
   }
@@ -271,7 +282,7 @@ function buildRecallItem(input: {
   }
 
   if (latestAttempt && diffDays(latestAttempt.created_at, today) === 0) {
-    reasons.push({ text: `${getAttemptLabel(latestAttempt.activity_type)} i dag.`, weight: 1 });
+    reasons.push({ text: `${getAttemptLabel(latestAttempt.activity_type)} i dag.`, weight: 22 });
   }
 
   const isEligible = score >= 35 || Boolean(openFollowUp?.due_date && openFollowUp.due_date <= todayInput);
