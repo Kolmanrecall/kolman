@@ -22,59 +22,69 @@ export default async function DashboardPage() {
 
   return (
     <Shell>
-      <div className="space-y-10">
-        <div className="kolman-card overflow-hidden p-9 md:p-12">
-          <p className="text-sm uppercase tracking-[0.24em] text-[#c6a884]">Kolman</p>
-          <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h1 className="text-4xl font-semibold tracking-tight text-white md:text-5xl">Oversikt</h1>
-              <p className="mt-3 max-w-2xl text-base text-[#d4c4b2] md:text-lg">Kontaktarbeid, oppfølging og historikk.</p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/import" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Importer</Link>
-              <Link href="/contacts" className="rounded-full border border-[rgba(220,194,163,0.10)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)]">Kontakter</Link>
-              <Link href="/cases" className="rounded-full border border-[rgba(220,194,163,0.10)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)]">Saker</Link>
-            </div>
+      <div className="space-y-8">
+        <div className="flex flex-col gap-4 border-b border-[rgba(220,194,163,0.10)] pb-7 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-[#c6a884]">Oversikt</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Dagens arbeid</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#d4c4b2]">
+              Se hvem som bør kontaktes, hva som er gjort denne måneden, og hvilke oppfølginger som ligger foran deg.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/recall" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Åpne køen</Link>
+            <Link href="/import" className="rounded-full border border-[rgba(220,194,163,0.10)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)]">Importer</Link>
+            <Link href="/contacts/new" className="rounded-full border border-[rgba(220,194,163,0.10)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)]">Ny kontakt</Link>
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <StatCard label="Kontakter" value={String(stats.totalContacts)} sublabel="Importert" />
-          <StatCard label="Oppfølgingskø" value={String(recallItems.length)} sublabel="Prioritert nå" />
-          <StatCard label="Oppfølginger" value={String(stats.openFollowUps)} sublabel="Åpne" />
-          <StatCard label="Saker" value={String(stats.activeCases)} sublabel="Åpne" />
-          <StatCard label="Utkast" value={String(stats.draftsCreated)} sublabel="Lagret" />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard label="Samtaler" value={String(stats.spokenThisMonth)} sublabel="Snakket med denne måneden" />
+          <StatCard label="Oppfølginger" value={String(stats.completedFollowUpsThisMonth)} sublabel="Fullført denne måneden" />
+          <StatCard label="Kontakter jobbet" value={String(stats.workedContactsThisMonth)} sublabel="Unike kontakter denne måneden" />
+          <StatCard label="Saker i bevegelse" value={String(stats.casesMovedThisMonth)} sublabel="Flyttet eller oppdatert" />
         </div>
 
         {!hasContacts ? (
-          <SectionCard title="Ingen kontakter">
-            <div className="rounded-[28px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] p-8">
-              <h2 className="text-2xl font-semibold text-white">Importer kontaktliste</h2>
-              <p className="mt-3 max-w-xl text-[#d4c4b2]">CSV fra CRM, Excel eller Google Sheets.</p>
+          <SectionCard title="Kom i gang">
+            <div className="rounded-[24px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] p-7">
+              <h2 className="text-xl font-semibold text-white">Start med kontaktlisten</h2>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-[#d4c4b2]">
+                Importer en CSV eller legg inn én kontakt manuelt. Kolman bruker listen til å finne hvem som bør følges opp først.
+              </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/import" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Importer</Link>
+                <Link href="/import" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Importer kontakter</Link>
+                <Link href="/contacts/new" className="rounded-full border border-[rgba(220,194,163,0.10)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)]">Legg til én kontakt</Link>
               </div>
             </div>
           </SectionCard>
         ) : (
           <>
-
             {recallItems.length ? (
-              <SectionCard title="Oppfølgingskø">
+              <SectionCard title="Dagens ringeliste" description={`${recallItems.length} kontakter ligger i prioritert oppfølgingskø.`}>
                 <div className="space-y-3">
-                  {recallItems.slice(0, 3).map((item) => (
+                  {recallItems.slice(0, 5).map((item) => (
                     <Link key={item.contact.id} href={`/recall` as any} className="flex items-center justify-between gap-4 rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] px-4 py-3 transition hover:border-[rgba(183,146,104,0.32)] hover:bg-[rgba(255,245,232,0.03)]">
-                      <div>
+                      <div className="min-w-0">
                         <div className="font-medium text-white">{item.contact.full_name}</div>
-                        <div className="mt-1 text-xs text-[#8e7c69]">{item.reasons[0]}</div>
+                        <div className="mt-1 truncate text-xs text-[#b8aa98]">{item.reasons[0]}</div>
                       </div>
-                      <span className="rounded-full border border-[rgba(183,146,104,0.20)] bg-[rgba(183,146,104,0.08)] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[#dcbf9e]">{item.priorityLabel}</span>
+                      <span className="shrink-0 rounded-full border border-[rgba(183,146,104,0.20)] bg-[rgba(183,146,104,0.08)] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[#dcbf9e]">{item.priorityLabel}</span>
                     </Link>
                   ))}
-                  <Link href="/recall" className="inline-flex rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Åpne køen</Link>
+                  <Link href="/recall" className="inline-flex rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Jobb køen</Link>
                 </div>
               </SectionCard>
-            ) : null}
+            ) : (
+              <SectionCard title="Dagens ringeliste">
+                <div className="rounded-[24px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] p-7">
+                  <h2 className="text-xl font-semibold text-white">Ingen tydelige oppfølginger akkurat nå</h2>
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-[#d4c4b2]">
+                    Legg inn siste kontakt, status eller neste steg på sakene. Da blir køen mer presis uten at listen fylles med tilfeldige navn.
+                  </p>
+                </div>
+              </SectionCard>
+            )}
 
             <SectionCard title="Hurtignotat">
               <QuickNoteCard contacts={contacts.map((contact) => ({ id: contact.id, full_name: contact.full_name, city: contact.city, status_raw: contact.status_raw }))} />
@@ -96,7 +106,7 @@ export default async function DashboardPage() {
                   <Link key={contact.id} href={`/contacts/${contact.id}`} className="flex items-center justify-between rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] px-4 py-3 transition hover:border-[rgba(183,146,104,0.32)] hover:bg-[rgba(255,245,232,0.03)]">
                     <div>
                       <div className="font-medium text-white">{contact.full_name}</div>
-                      <div className="mt-1 text-xs text-[#8e7c69]">{contact.city || 'Ukjent by'}</div>
+                      <div className="mt-1 text-xs text-[#b8aa98]">{contact.city || 'Ukjent by'}</div>
                     </div>
                     <StatusBadge value={contact.status_raw || 'Ukjent'} tone={toneFromStatus(contact.status_raw)} />
                   </Link>

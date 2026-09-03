@@ -1,5 +1,6 @@
 import { createServiceRoleSupabaseClient, getAuthenticatedUser } from '@/lib/supabase-server';
-import type { Contact } from '@/lib/types';
+import { isOpenCaseStatus } from '@/lib/case-status';
+import type { Contact, PropertyCaseStatus } from '@/lib/types';
 
 export type RecallPriority = 'high' | 'medium' | 'low';
 
@@ -31,6 +32,11 @@ export type RecallQueueItem = {
   } | null;
   hasUnsentDraft: boolean;
   linkedCaseCount: number;
+  caseSignal: {
+    title: string;
+    label: string;
+    due_date: string | null;
+  } | null;
 };
 
 type ClassificationRow = {
@@ -59,6 +65,13 @@ type DraftRow = {
 
 type CaseContactRow = {
   contact_id: string;
+  case?: {
+    id: string;
+    title: string;
+    status: PropertyCaseStatus | string | null;
+    next_step: string | null;
+    next_step_due_date: string | null;
+  } | null;
 };
 
 type ReplyRow = {
@@ -137,13 +150,17 @@ function getPriority(score: number, hasConfirmedHumanSignal: boolean): { priorit
   return { priority: 'low', priorityLabel: 'Lav' };
 }
 
-function getDueRank(followUp: FollowUpRow | null, todayInput: string) {
-  if (!followUp?.due_date) return 9_999;
-  if (followUp.due_date <= todayInput) return -1;
+function getDaysUntilDate(date: string | null | undefined, todayInput: string) {
+  if (!date) return 9_999;
+  if (date <= todayInput) return -1;
   const today = new Date(`${todayInput}T00:00:00`);
-  const due = new Date(`${followUp.due_date}T00:00:00`);
+  const due = new Date(`${date}T00:00:00`);
   if (Number.isNaN(today.getTime()) || Number.isNaN(due.getTime())) return 9_999;
   return Math.floor((due.getTime() - today.getTime()) / 86_400_000);
+}
+
+function getDueRank(followUp: FollowUpRow | null, todayInput: string) {
+  return getDaysUntilDate(followUp?.due_date, todayInput);
 }
 
 function chooseOpenFollowUp(rows: FollowUpRow[], todayInput: string) {
@@ -190,13 +207,14 @@ function buildRecallItem(input: {
   classification: ClassificationRow | null;
   openFollowUps: FollowUpRow[];
   hasUnsentDraft: boolean;
-  linkedCaseCount: number;
+  linkedCases: CaseContactRow[];
   latestReply: ReplyRow | null;
   latestAttempt: ActivityRow | null;
   today: Date;
   todayInput: string;
 }): RecallQueueItem | null {
-  const { contact, classification, openFollowUps, hasUnsentDraft, linkedCaseCount, latestReply, latestAttempt, today, todayInput } = input;
+  const { contact, classification, openFollowUps, hasUnsentDraft, linkedCases, latestReply, latestAttempt, today, todayInput } = input;
+  const linkedCaseCount = linkedCases.length;
   const reasons: { text: string; weight: number }[] = [];
   const text = `${contact.status_raw ?? ''} ${contact.notes ?? ''}`;
 
@@ -276,9 +294,37 @@ function buildRecallItem(input: {
     reasons.push({ text: 'Har meldingsutkast som ikke er markert sendt.', weight: 10 });
   }
 
-  if (linkedCaseCount > 0) {
-    score += 8;
-    reasons.push({ text: 'Koblet til sak/adresse.', weight: 8 });
+  const openLinkedCases = linkedCases
+    .map((link) => link.case)
+    .filter((propertyCase): propertyCase is NonNullable<CaseContactRow['case']> => Boolean(propertyCase && isOpenCaseStatus(propertyCase.status)));
+  const mostUrgentCase = openLinkedCases
+    .filter((propertyCase) => propertyCase.next_step_due_date)
+    .sort((a, b) => getDaysUntilDate(a.next_step_due_date, todayInput) - getDaysUntilDate(b.next_step_due_date, todayInput))[0] ?? null;
+  let caseSignal: RecallQueueItem['caseSignal'] = null;
+
+  if (mostUrgentCase) {
+    const daysUntilCaseStep = getDaysUntilDate(mostUrgentCase.next_step_due_date, todayInput);
+    const caseTitle = mostUrgentCase.title || 'Sak';
+    if (daysUntilCaseStep <= 0) {
+      score += 42;
+      hasConfirmedHumanSignal = true;
+      caseSignal = { title: caseTitle, label: 'Forfalt neste steg', due_date: mostUrgentCase.next_step_due_date };
+      reasons.push({ text: `Sak har forfalt neste steg: ${mostUrgentCase.next_step || caseTitle}.`, weight: 42 });
+    } else if (daysUntilCaseStep <= 7) {
+      score += 24;
+      hasConfirmedHumanSignal = true;
+      caseSignal = { title: caseTitle, label: 'Neste steg denne uken', due_date: mostUrgentCase.next_step_due_date };
+      reasons.push({ text: `Sak har neste steg denne uken: ${mostUrgentCase.next_step || caseTitle}.`, weight: 24 });
+    }
+  }
+
+  if (!caseSignal && openLinkedCases.length > 0) {
+    score += 10;
+    caseSignal = { title: openLinkedCases[0]?.title ?? 'Sak', label: 'Aktiv sak/adresse', due_date: openLinkedCases[0]?.next_step_due_date ?? null };
+    reasons.push({ text: 'Koblet til aktiv sak/adresse.', weight: 10 });
+  } else if (!caseSignal && linkedCaseCount > 0) {
+    score += 4;
+    reasons.push({ text: 'Koblet til arkivert sak/adresse.', weight: 4 });
   }
 
   if (latestAttempt && diffDays(latestAttempt.created_at, today) === 0) {
@@ -322,6 +368,7 @@ function buildRecallItem(input: {
     openFollowUp: openFollowUp ? { id: openFollowUp.id, title: openFollowUp.title, due_date: openFollowUp.due_date } : null,
     hasUnsentDraft,
     linkedCaseCount,
+    caseSignal,
   };
 }
 
@@ -363,7 +410,10 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
         .order('created_at', { ascending: false }),
       supabase.from('follow_ups').select('id, contact_id, title, due_date, status, created_at').eq('user_id', user.id).neq('status', 'completed'),
       supabase.from('message_drafts').select('contact_id, sent, approved, created_at').eq('user_id', user.id).order('created_at', { ascending: false }),
-      supabase.from('case_contacts').select('contact_id').eq('user_id', user.id),
+      supabase
+        .from('case_contacts')
+        .select('contact_id, case:property_cases(id, title, status, next_step, next_step_due_date)')
+        .eq('user_id', user.id),
       supabase
         .from('contact_replies')
         .select('contact_id, reply_category, next_step, reply_text, created_at, contacts!inner(user_id)')
@@ -402,9 +452,11 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
       if (!draftByContact.has(row.contact_id)) draftByContact.set(row.contact_id, row);
     });
 
-    const caseCountByContact = new Map<string, number>();
+    const linkedCasesByContact = new Map<string, CaseContactRow[]>();
     ((caseContactsResult.data ?? []) as CaseContactRow[]).forEach((row) => {
-      caseCountByContact.set(row.contact_id, (caseCountByContact.get(row.contact_id) ?? 0) + 1);
+      const group = linkedCasesByContact.get(row.contact_id) ?? [];
+      group.push(row);
+      linkedCasesByContact.set(row.contact_id, group);
     });
 
     const latestReplyByContact = new Map<string, ReplyRow>();
@@ -424,7 +476,7 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
           classification: latestClassificationByContact.get(contact.id) ?? null,
           openFollowUps: followUpsByContact.get(contact.id) ?? [],
           hasUnsentDraft: Boolean(draftByContact.get(contact.id) && !draftByContact.get(contact.id)?.sent),
-          linkedCaseCount: caseCountByContact.get(contact.id) ?? 0,
+          linkedCases: linkedCasesByContact.get(contact.id) ?? [],
           latestReply: latestReplyByContact.get(contact.id) ?? null,
           latestAttempt: latestAttemptByContact.get(contact.id) ?? null,
           today,

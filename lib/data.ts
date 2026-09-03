@@ -23,6 +23,11 @@ function throwDataError(scope: string, error: unknown): never {
   throw new Error('Vi får ikke kontakt med dataene dine akkurat nå. Prøv igjen om litt.');
 }
 
+function monthStartIso(date = new Date()) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1, 0, 0, 0)).toISOString();
+}
+
+
 function normalizeFollowUps(rows: FollowUpRow[] | null | undefined): FollowUp[] {
   return (rows ?? []).map((row) => {
     const { contacts, ...followUp } = row;
@@ -98,13 +103,24 @@ export async function getLatestClassification(contactId: string) {
 export async function getDashboardStats() {
   const userId = await getCurrentUserId();
   if (!userId) {
-    return { totalContacts: 0, warmOpportunities: 0, draftsCreated: 0, openFollowUps: 0, activeCases: 0 };
+    return {
+      totalContacts: 0,
+      warmOpportunities: 0,
+      draftsCreated: 0,
+      openFollowUps: 0,
+      activeCases: 0,
+      spokenThisMonth: 0,
+      completedFollowUpsThisMonth: 0,
+      workedContactsThisMonth: 0,
+      casesMovedThisMonth: 0,
+    };
   }
 
   try {
     const supabase = createServiceRoleSupabaseClient();
+    const monthStart = monthStartIso();
 
-    const [contactsResult, classificationsResult, draftsResult, followUpsResult, casesResult] = await Promise.all([
+    const [contactsResult, classificationsResult, draftsResult, followUpsResult, casesResult, activityResult, completedFollowUpsResult, caseMovementResult] = await Promise.all([
       supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('user_id', userId),
       supabase
         .from('contact_classifications')
@@ -121,6 +137,19 @@ export async function getDashboardStats() {
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
         .not('status', 'in', '(sold,lost,archived,closed)'),
+      supabase
+        .from('contact_activities')
+        .select('contact_id, activity_type')
+        .eq('user_id', userId)
+        .gte('created_at', monthStart)
+        .in('activity_type', ['contacted_spoke', 'contacted_left_message', 'contacted_no_answer', 'contacted']),
+      supabase
+        .from('follow_ups')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('status', 'completed')
+        .gte('completed_at', monthStart),
+      supabase.from('property_cases').select('id, status, created_at, updated_at').eq('user_id', userId),
     ]);
 
     if (contactsResult.error) throw contactsResult.error;
@@ -128,12 +157,23 @@ export async function getDashboardStats() {
     if (draftsResult.error) throw draftsResult.error;
     if (followUpsResult.error) throw followUpsResult.error;
     if (casesResult.error) throw casesResult.error;
+    if (activityResult.error) throw activityResult.error;
+    if (completedFollowUpsResult.error) throw completedFollowUpsResult.error;
+    if (caseMovementResult.error) throw caseMovementResult.error;
 
     const dbContacts = contactsResult.count ?? 0;
     const dbWarm = (classificationsResult.data ?? []).filter((item: { warmth_score?: number | null }) => (item.warmth_score ?? 0) >= 7).length;
     const dbDrafts = draftsResult.count ?? 0;
     const dbFollowUps = followUpsResult.count ?? 0;
     const dbCases = casesResult.count ?? 0;
+    const activities = (activityResult.data ?? []) as Array<{ contact_id: string | null; activity_type: string | null }>;
+    const workedContactIds = new Set(activities.map((activity) => activity.contact_id).filter(Boolean));
+    const spokenThisMonth = activities.filter((activity) => activity.activity_type === 'contacted_spoke' || activity.activity_type === 'contacted').length;
+    const movedCases = (caseMovementResult.data ?? []).filter((item: { status?: string | null; created_at?: string | null; updated_at?: string | null }) => {
+      if (!['valuation', 'befaring', 'assignment', 'sold'].includes(item.status ?? '')) return false;
+      const movedAt = item.updated_at || item.created_at || '';
+      return movedAt >= monthStart;
+    }).length;
 
     return {
       totalContacts: dbContacts,
@@ -141,6 +181,10 @@ export async function getDashboardStats() {
       draftsCreated: dbDrafts,
       openFollowUps: dbFollowUps,
       activeCases: dbCases,
+      spokenThisMonth,
+      completedFollowUpsThisMonth: completedFollowUpsResult.count ?? 0,
+      workedContactsThisMonth: workedContactIds.size,
+      casesMovedThisMonth: movedCases,
     };
   } catch (error) {
     throwDataError('getDashboardStats', error);

@@ -62,12 +62,12 @@ body {
 }
 
 .kolman-card {
-  @apply rounded-[30px] backdrop-blur-xl;
+  @apply rounded-[24px] backdrop-blur-xl;
   border: 1px solid var(--kolman-border);
   background: linear-gradient(180deg, rgba(255,245,232,0.043) 0%, rgba(255,245,232,0.024) 100%);
   box-shadow:
-    0 10px 34px rgba(0, 0, 0, 0.22),
-    inset 0 1px 0 rgba(255,248,240,0.04);
+    0 8px 24px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255,248,240,0.035);
 }
 
 .kolman-card-soft {

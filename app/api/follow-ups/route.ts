@@ -32,13 +32,31 @@ export async function POST(request: NextRequest) {
 
     if (contactError || !contact) throw new Error('Kontakten ble ikke funnet.');
 
+    const { data: existingFollowUps, error: existingFollowUpError } = await supabase
+      .from('follow_ups')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('contact_id', contactId)
+      .neq('status', 'completed');
+
+    if (existingFollowUpError) throw existingFollowUpError;
+
+    const normalizedDueDate = dueDate || null;
+    const duplicate = (existingFollowUps ?? []).find(
+      (item) => item.title.trim().toLowerCase() === title.trim().toLowerCase() && (item.due_date ?? null) === normalizedDueDate,
+    );
+
+    if (duplicate) {
+      return NextResponse.json({ followUp: duplicate, duplicate: true, message: 'Oppfølgingen ligger allerede klar.' });
+    }
+
     const { data: followUp, error: followUpError } = await supabase
       .from('follow_ups')
       .insert({
         user_id: user.id,
         contact_id: contactId,
         title,
-        due_date: dueDate || null,
+        due_date: normalizedDueDate,
         note: note || null,
         status: 'open',
       })

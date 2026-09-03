@@ -70,7 +70,7 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
       });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'Kunne ikke lage oppfølging.');
-      setItemMessage(item.contact.id, 'success', 'Oppfølging lagret.');
+      setItemMessage(item.contact.id, 'success', json.message || 'Oppfølging lagret.');
       router.refresh();
     } catch (error) {
       setItemMessage(item.contact.id, 'error', error instanceof Error ? error.message : 'Kunne ikke lage oppfølging.');
@@ -79,27 +79,6 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
     }
   }
 
-  async function generateMessage(item: RecallQueueItem) {
-    const key = `${item.contact.id}:message`;
-    setLoadingKey(key);
-    setItemMessage(item.contact.id, 'success', '');
-
-    try {
-      const response = await fetch('/api/ai/generate-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contactId: item.contact.id, intent: 'seller-reactivation', channel: 'SMS' }),
-      });
-      const json = await response.json();
-      if (!response.ok) throw new Error(json.error || 'Kunne ikke lage meldingsutkast.');
-      setItemMessage(item.contact.id, 'success', 'Meldingsutkast lagret på kontakten.');
-      router.refresh();
-    } catch (error) {
-      setItemMessage(item.contact.id, 'error', error instanceof Error ? error.message : 'Kunne ikke lage meldingsutkast.');
-    } finally {
-      setLoadingKey(null);
-    }
-  }
 
   async function markContacted(item: RecallQueueItem, outcome: ContactOutcome) {
     const key = `${item.contact.id}:contacted:${outcome}`;
@@ -153,13 +132,12 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
         const message = messages[item.contact.id];
         const contactBusy = isContactBusy(item.contact.id);
         const followUpLoading = loadingKey === `${item.contact.id}:follow-up`;
-        const messageLoading = loadingKey === `${item.contact.id}:message`;
         const outcomeOpen = outcomeContactId === item.contact.id;
         const snoozeOpen = snoozeContactId === item.contact.id;
 
         return (
-          <article key={item.contact.id} className="rounded-[28px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.025)] p-5 md:p-6">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <article key={item.contact.id} className="rounded-[22px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.025)] p-4 md:p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-3">
                   <Link href={`/contacts/${item.contact.id}` as any} className="text-xl font-semibold text-white transition hover:text-[#ead3b7]">
@@ -212,6 +190,18 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
                         <p className="mt-1 text-white">{item.openFollowUp ? formatDate(item.openFollowUp.due_date) : formatDate(item.suggestedDueDate)}</p>
                       </div>
                     </div>
+                    {item.caseSignal ? (
+                      <div className="mt-4 border-t border-[rgba(220,194,163,0.08)] pt-4">
+                        <p className="text-xs uppercase tracking-[0.18em] text-[#9f907f]">Sak</p>
+                        <p className="mt-1 text-sm text-white">{item.caseSignal.label}</p>
+                        <p className="mt-1 text-xs text-[#b8aa98]">{item.caseSignal.title}{item.caseSignal.due_date ? ` · ${formatDate(item.caseSignal.due_date)}` : ''}</p>
+                      </div>
+                    ) : item.hasUnsentDraft ? (
+                      <div className="mt-4 border-t border-[rgba(220,194,163,0.08)] pt-4">
+                        <p className="text-xs uppercase tracking-[0.18em] text-[#9f907f]">Utkast</p>
+                        <p className="mt-1 text-sm text-[#d4c4b2]">Meldingsutkast ligger på kontakten.</p>
+                      </div>
+                    ) : null}
                     {item.latestNote ? (
                       <div className="mt-4 border-t border-[rgba(220,194,163,0.08)] pt-4">
                         <p className="text-xs uppercase tracking-[0.18em] text-[#9f907f]">Siste notat</p>
@@ -227,7 +217,7 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
                 </div>
               </div>
 
-              <div className="flex w-full flex-col gap-3 lg:w-[230px]">
+              <div className="flex w-full flex-col gap-3 lg:w-[210px]">
                 <button
                   type="button"
                   onClick={() => createFollowUp(item)}
@@ -235,14 +225,6 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
                   className="rounded-2xl border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.16)] px-4 py-3 text-sm font-medium text-white transition hover:bg-[rgba(183,146,104,0.24)] disabled:cursor-not-allowed disabled:opacity-55"
                 >
                   {followUpLoading ? 'Lagrer…' : item.openFollowUp ? 'Lag ny oppfølging' : 'Lag oppfølging'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => generateMessage(item)}
-                  disabled={contactBusy}
-                  className="rounded-2xl border border-[rgba(220,194,163,0.14)] bg-[rgba(255,245,232,0.03)] px-4 py-3 text-sm font-medium text-white transition hover:bg-[rgba(255,245,232,0.06)] disabled:cursor-not-allowed disabled:opacity-55"
-                >
-                  {messageLoading ? 'Lager…' : item.hasUnsentDraft ? 'Lag nytt utkast' : 'Lag melding'}
                 </button>
                 <button
                   type="button"
