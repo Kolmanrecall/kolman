@@ -42,9 +42,8 @@ export async function POST(request: NextRequest) {
     if (existingFollowUpError) throw existingFollowUpError;
 
     const normalizedDueDate = dueDate || null;
-    const duplicate = (existingFollowUps ?? []).find(
-      (item) => item.title.trim().toLowerCase() === title.trim().toLowerCase() && (item.due_date ?? null) === normalizedDueDate,
-    );
+    const normalizedTitle = title.trim().toLowerCase();
+    const duplicate = (existingFollowUps ?? []).find((item) => item.title.trim().toLowerCase() === normalizedTitle);
 
     if (duplicate) {
       return NextResponse.json({ followUp: duplicate, duplicate: true, message: 'Oppfølgingen ligger allerede klar.' });

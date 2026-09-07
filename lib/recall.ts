@@ -253,8 +253,8 @@ function buildRecallItem(input: {
 
   const daysSinceLastContact = diffDays(contact.last_contacted_at, today);
   if (daysSinceLastContact === null) {
-    score += 18;
-    reasons.push({ text: 'Ingen registrert siste kontakt.', weight: 18 });
+    score += 20;
+    reasons.push({ text: 'Ingen registrert siste kontakt.', weight: 20 });
   } else if (daysSinceLastContact >= 180) {
     score += 38;
     reasons.push({ text: `Ikke fulgt opp på ${daysSinceLastContact} dager.`, weight: 38 });

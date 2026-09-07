@@ -73,7 +73,7 @@ export function ContactForm({ contact, mode }: ContactFormProps) {
   async function handleDelete() {
     if (!contact) return;
     const confirmed = window.confirm(
-      'Slette denne kontakten? Historikk, oppfølginger, meldingsutkast, prioriteringer og saks-koblinger for kontakten slettes samtidig.',
+      'Slette denne kontakten? Historikk, oppfølginger, meldingsutkast, prioriteringer og saks-koblinger for kontakten slettes samtidig. Dette kan også påvirke månedens resultattall.',
     );
     if (!confirmed) return;
 

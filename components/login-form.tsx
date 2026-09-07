@@ -6,6 +6,28 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser';
 
 type Mode = 'login' | 'signup';
 
+function getAuthErrorMessage(error: unknown) {
+  const raw = error instanceof Error ? error.message.toLowerCase() : '';
+
+  if (raw.includes('email not confirmed')) {
+    return 'E-posten må bekreftes før du kan logge inn. Sjekk innboksen din.';
+  }
+
+  if (raw.includes('invalid login credentials')) {
+    return 'E-post eller passord stemmer ikke.';
+  }
+
+  if (raw.includes('user already registered') || raw.includes('already registered')) {
+    return 'Det finnes allerede en konto med denne e-posten. Prøv å logge inn.';
+  }
+
+  if (raw.includes('password')) {
+    return 'Passordet oppfyller ikke kravene. Bruk minst 8 tegn.';
+  }
+
+  return 'Kunne ikke fullføre forespørselen. Prøv igjen om litt.';
+}
+
 export function LoginForm() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('login');
@@ -58,12 +80,12 @@ export function LoginForm() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/login`,
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
           },
         });
 
         if (error) throw error;
-        setMessage('Konto opprettet. Du kan logge inn med e-posten og passordet ditt.');
+        setMessage('Konto opprettet. Sjekk e-posten din hvis du blir bedt om å bekrefte kontoen.');
         setMode('login');
         setPassword('');
         setConfirmPassword('');
@@ -76,7 +98,7 @@ export function LoginForm() {
       router.push('/dashboard');
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kunne ikke logge inn.');
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }

@@ -207,8 +207,13 @@ export function ImportPanel() {
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'Importen feilet.');
 
-      const skippedText = json.skipped ? ` ${json.skipped} duplikat${json.skipped === 1 ? '' : 'er'} ble hoppet over.` : '';
-      setMessage(`Import ferdig. ${json.inserted ?? rows.length} kontakter ble lagret.${skippedText} Sender deg til Oppfølgingskøen.`);
+      const duplicateText = json.skippedDuplicates
+        ? ` ${json.skippedDuplicates} duplikat${json.skippedDuplicates === 1 ? '' : 'er'} ble hoppet over.`
+        : '';
+      const invalidText = json.skippedInvalid
+        ? ` ${json.skippedInvalid} rad${json.skippedInvalid === 1 ? '' : 'er'} hadde mangler og ble hoppet over.`
+        : '';
+      setMessage(`Import ferdig. ${json.inserted ?? rows.length} kontakter ble lagret.${duplicateText}${invalidText} Sender deg til Oppfølgingskøen.`);
       setFile(null);
       setPreviewCount(null);
       const input = document.getElementById('csv-upload') as HTMLInputElement | null;

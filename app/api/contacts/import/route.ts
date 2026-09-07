@@ -27,8 +27,10 @@ const rowSchema = z.object({
 });
 
 const bodySchema = z.object({
-  rows: z.array(rowSchema).min(1, 'Fant ingen kontakter å importere.').max(5000, 'Maks 5000 kontakter per import.'),
+  rows: z.array(z.unknown()).min(1, 'Fant ingen kontakter å importere.').max(5000, 'Maks 5000 kontakter per import.'),
 });
+
+type ImportRow = z.infer<typeof rowSchema>;
 
 function normalizeEmail(value: string | null) {
   return value?.trim().toLowerCase() || null;
@@ -55,7 +57,34 @@ export async function POST(request: NextRequest) {
 
   try {
     const json = await request.json();
-    const { rows } = bodySchema.parse(json);
+    const { rows: rawRows } = bodySchema.parse(json);
+
+    const validRows: ImportRow[] = [];
+    const invalidRows: { rowNumber: number; reason: string }[] = [];
+
+    rawRows.forEach((row, index) => {
+      const parsed = rowSchema.safeParse(row);
+      if (parsed.success) {
+        validRows.push(parsed.data);
+        return;
+      }
+
+      invalidRows.push({
+        rowNumber: index + 2,
+        reason: parsed.error.issues[0]?.message ?? 'Raden kunne ikke importeres.',
+      });
+    });
+
+    if (!validRows.length) {
+      return NextResponse.json({
+        inserted: 0,
+        skipped: invalidRows.length,
+        skippedDuplicates: 0,
+        skippedInvalid: invalidRows.length,
+        invalidRows: invalidRows.slice(0, 25),
+        contacts: [],
+      });
+    }
 
     const supabase = createServiceRoleSupabaseClient();
     const { data: existingContacts, error: existingError } = await supabase.from('contacts').select('email, phone').eq('user_id', user.id);
@@ -66,12 +95,12 @@ export async function POST(request: NextRequest) {
       contactKeys(contact).forEach((key) => seenKeys.add(key));
     });
 
-    let skipped = 0;
-    const payload = rows.flatMap((row) => {
+    let skippedDuplicates = 0;
+    const payload = validRows.flatMap((row) => {
       const keys = contactKeys(row);
       const duplicate = keys.length > 0 && keys.some((key) => seenKeys.has(key));
       if (duplicate) {
-        skipped += 1;
+        skippedDuplicates += 1;
         return [];
       }
       keys.forEach((key) => seenKeys.add(key));
@@ -79,7 +108,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (!payload.length) {
-      return NextResponse.json({ inserted: 0, skipped, contacts: [] });
+      return NextResponse.json({
+        inserted: 0,
+        skipped: skippedDuplicates + invalidRows.length,
+        skippedDuplicates,
+        skippedInvalid: invalidRows.length,
+        invalidRows: invalidRows.slice(0, 25),
+        contacts: [],
+      });
     }
 
     const insertedContacts = [];
@@ -89,7 +125,14 @@ export async function POST(request: NextRequest) {
       insertedContacts.push(...(data ?? []));
     }
 
-    return NextResponse.json({ inserted: insertedContacts.length, skipped, contacts: insertedContacts });
+    return NextResponse.json({
+      inserted: insertedContacts.length,
+      skipped: skippedDuplicates + invalidRows.length,
+      skippedDuplicates,
+      skippedInvalid: invalidRows.length,
+      invalidRows: invalidRows.slice(0, 25),
+      contacts: insertedContacts,
+    });
   } catch (error) {
     return apiError(error, 'Importen feilet. Sjekk filen og prøv igjen.', 400, 'contacts:import');
   }
