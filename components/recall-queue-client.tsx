@@ -5,25 +5,32 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import type { RecallQueueItem } from '@/lib/recall';
 
-function priorityClass(priority: RecallQueueItem['priority']) {
-  if (priority === 'high') return 'border-[rgba(183,146,104,0.36)] bg-[rgba(183,146,104,0.12)] text-[#f3dfc2]';
-  if (priority === 'medium') return 'border-[rgba(183,146,104,0.22)] bg-[rgba(183,146,104,0.10)] text-[#f0dcc3]';
-  return 'border-white/6 bg-white/[0.03] text-[#d4c4b2]';
+function priorityBarClass(priority: RecallQueueItem['priority']) {
+  if (priority === 'high') return 'bg-[#b79268]';
+  if (priority === 'medium') return 'bg-[#6e5637]';
+  return 'bg-[#2e2924]';
+}
+
+function priorityLabel(priority: RecallQueueItem['priority']) {
+  if (priority === 'high') return 'Høy';
+  if (priority === 'medium') return 'Medium';
+  return 'Lav';
 }
 
 function formatDate(date: string | null | undefined) {
-  if (!date) return 'Uten dato';
+  if (!date) return '—';
   try {
-    return new Intl.DateTimeFormat('nb-NO', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(date));
+    return new Intl.DateTimeFormat('nb-NO', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(date));
   } catch {
     return date;
   }
 }
 
-function formatLastContact(item: RecallQueueItem) {
-  if (!item.contact.last_contacted_at) return 'Ingen registrert kontakt';
-  const date = formatDate(item.contact.last_contacted_at);
-  return item.daysSinceLastContact === null ? date : `${date} · ${item.daysSinceLastContact} dager`;
+function formatDays(item: RecallQueueItem) {
+  if (!item.contact.last_contacted_at) return 'Aldri kontaktet';
+  if (item.daysSinceLastContact === null) return 'Registrert kontakt';
+  if (item.daysSinceLastContact === 0) return 'I dag';
+  return `${item.daysSinceLastContact} dager`;
 }
 
 function contactSubtitle(item: RecallQueueItem) {
@@ -33,6 +40,24 @@ function contactSubtitle(item: RecallQueueItem) {
 
 function cleanPhone(value: string) {
   return value.replace(/\s+/g, '');
+}
+
+function shortEmail(email: string) {
+  if (email.length <= 22) return email;
+  const [name, domain] = email.split('@');
+  if (!domain) return `${email.slice(0, 19)}…`;
+  return `${name.slice(0, 14)}…@${domain.slice(0, 10)}`;
+}
+
+function primaryReason(reason: string) {
+  const separatorIndex = reason.indexOf(':');
+  if (separatorIndex === -1) return <span className="font-medium text-[#d6cec3]">{reason}</span>;
+  return (
+    <>
+      <span className="font-medium text-[#d6cec3]">{reason.slice(0, separatorIndex + 1)}</span>
+      <span> {reason.slice(separatorIndex + 1).trim()}</span>
+    </>
+  );
 }
 
 type ContactOutcome = 'spoke' | 'left_message' | 'no_answer';
@@ -78,7 +103,6 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
       setLoadingKey(null);
     }
   }
-
 
   async function markContacted(item: RecallQueueItem, outcome: ContactOutcome) {
     const key = `${item.contact.id}:contacted:${outcome}`;
@@ -127,146 +151,122 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
   }
 
   return (
-    <div className="space-y-4">
-      {items.map((item) => {
+    <div>
+      {items.map((item, index) => {
         const message = messages[item.contact.id];
         const contactBusy = isContactBusy(item.contact.id);
         const followUpLoading = loadingKey === `${item.contact.id}:follow-up`;
         const outcomeOpen = outcomeContactId === item.contact.id;
         const snoozeOpen = snoozeContactId === item.contact.id;
+        const phoneHref = item.contact.phone ? `tel:${cleanPhone(item.contact.phone)}` : undefined;
+        const reasons = item.reasons.slice(0, 2);
 
         return (
-          <article key={item.contact.id} className="rounded-[22px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.025)] p-4 md:p-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-3">
-                  <Link href={`/contacts/${item.contact.id}` as any} className="text-xl font-semibold text-white transition hover:text-[#ead3b7]">
-                    {item.contact.full_name}
-                  </Link>
-                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.16em] ${priorityClass(item.priority)}`}>
-                    {item.priorityLabel}
-                  </span>
-                  {item.latestAttempt ? <span className="text-xs uppercase tracking-[0.16em] text-[#c6a884]">{item.latestAttempt.label}</span> : null}
-                </div>
-                <p className="mt-2 text-sm text-[#9f907f]">{contactSubtitle(item)}</p>
+          <article
+            key={item.contact.id}
+            className="kolman-data-row group relative grid min-h-[74px] grid-cols-[34px_3px_minmax(0,1fr)] gap-x-3 py-3 transition md:grid-cols-[46px_3px_minmax(190px,1.15fr)_132px_132px_172px] md:gap-x-5"
+          >
+            <div className="pt-1 font-mono text-[13px] tabular-nums text-[#8a8177]">{String(index + 1).padStart(2, '0')}</div>
+            <div className={`h-full min-h-[50px] w-[3px] ${priorityBarClass(item.priority)}`} aria-label={`Prioritet: ${priorityLabel(item.priority)}`} />
 
-                <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                  {item.contact.phone ? (
-                    <a href={`tel:${cleanPhone(item.contact.phone)}`} className="rounded-full border border-[rgba(183,146,104,0.28)] bg-[rgba(183,146,104,0.10)] px-3 py-1.5 font-medium text-[#f0dcc3] transition hover:bg-[rgba(183,146,104,0.18)]">
-                      Ring {item.contact.phone}
-                    </a>
-                  ) : (
-                    <span className="rounded-full border border-[rgba(220,194,163,0.10)] px-3 py-1.5 text-[#9f907f]">Ingen telefon</span>
-                  )}
-                  {item.contact.email ? (
-                    <a href={`mailto:${item.contact.email}`} className="rounded-full border border-[rgba(220,194,163,0.10)] px-3 py-1.5 text-[#d4c4b2] transition hover:bg-[rgba(255,245,232,0.04)]">
-                      {item.contact.email}
-                    </a>
-                  ) : null}
-                </div>
+            <div className="min-w-0">
+              <Link href={`/contacts/${item.contact.id}` as any} className="kolman-focus-ring text-[15px] font-medium text-[#f0ebe4] transition hover:text-white">
+                {item.contact.full_name}
+              </Link>
+              <p className="mt-1 truncate text-[12.5px] text-[#8a8177]">{contactSubtitle(item)}</p>
+            </div>
 
-                <div className="mt-5 grid gap-3 md:grid-cols-[1fr_0.9fr]">
-                  <div className="rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-[#9f907f]">Hvorfor nå</p>
-                    <ul className="mt-3 space-y-2 text-sm leading-6 text-[#d4c4b2]">
-                      {item.reasons.map((reason) => (
-                        <li key={reason} className="flex gap-2">
-                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#c6a884]" />
-                          <span>{reason}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+            <div className="mt-3 min-w-0 md:mt-0">
+              {item.contact.phone ? (
+                <a href={phoneHref} className="kolman-focus-ring font-mono text-[13.5px] tabular-nums text-[#f0ebe4] underline decoration-[#6e5637] underline-offset-4 transition hover:decoration-[#b79268]">
+                  {item.contact.phone}
+                </a>
+              ) : (
+                <p className="font-mono text-[13.5px] text-[#8a8177]">Ingen telefon</p>
+              )}
+              <p className="mt-1 truncate text-[12.5px] text-[#8a8177]">{item.contact.email ? shortEmail(item.contact.email) : 'Ingen e-post'}</p>
+            </div>
 
-                  <div className="rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-[#9f907f]">Arbeid</p>
-                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-[#b8aa98]">
-                      <div>
-                        <p className="uppercase tracking-[0.16em] text-[#9f907f]">Siste kontakt</p>
-                        <p className="mt-1 text-white">{formatLastContact(item)}</p>
-                      </div>
-                      <div>
-                        <p className="uppercase tracking-[0.16em] text-[#9f907f]">Oppfølging</p>
-                        <p className="mt-1 text-white">{item.openFollowUp ? formatDate(item.openFollowUp.due_date) : formatDate(item.suggestedDueDate)}</p>
-                      </div>
-                    </div>
-                    {item.caseSignal ? (
-                      <div className="mt-4 border-t border-[rgba(220,194,163,0.08)] pt-4">
-                        <p className="text-xs uppercase tracking-[0.18em] text-[#9f907f]">Sak</p>
-                        <p className="mt-1 text-sm text-white">{item.caseSignal.label}</p>
-                        <p className="mt-1 text-xs text-[#b8aa98]">{item.caseSignal.title}{item.caseSignal.due_date ? ` · ${formatDate(item.caseSignal.due_date)}` : ''}</p>
-                      </div>
-                    ) : item.hasUnsentDraft ? (
-                      <div className="mt-4 border-t border-[rgba(220,194,163,0.08)] pt-4">
-                        <p className="text-xs uppercase tracking-[0.18em] text-[#9f907f]">Utkast</p>
-                        <p className="mt-1 text-sm text-[#d4c4b2]">Meldingsutkast ligger på kontakten.</p>
-                      </div>
-                    ) : null}
-                    {item.latestNote ? (
-                      <div className="mt-4 border-t border-[rgba(220,194,163,0.08)] pt-4">
-                        <p className="text-xs uppercase tracking-[0.18em] text-[#9f907f]">Siste notat</p>
-                        <p
-                          className="mt-2 overflow-hidden text-sm leading-6 text-[#d4c4b2]"
-                          style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
-                        >
-                          {item.latestNote}
-                        </p>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
+            <div className="mt-3 md:mt-0">
+              <p className="font-mono text-[13.5px] tabular-nums text-[#f0ebe4]">{formatDate(item.contact.last_contacted_at)}</p>
+              <p className="mt-1 text-[12.5px] text-[#8a8177]">{formatDays(item)}</p>
+            </div>
 
-              <div className="flex w-full flex-col gap-3 lg:w-[210px]">
+            <div className="relative mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] md:mt-0 md:block">
+              {item.contact.phone ? (
+                <a href={phoneHref} className="kolman-focus-ring inline-flex rounded-[8px] bg-[#b79268] px-4 py-2 font-semibold text-[#17120e] transition hover:bg-[#c8a77c]">
+                  Ring
+                </a>
+              ) : (
+                <span className="inline-flex rounded-[8px] border border-[#2e2924] px-4 py-2 font-medium text-[#8a8177]">Ring</span>
+              )}
+              <div className="mt-0 flex flex-wrap gap-x-4 gap-y-2 md:mt-2">
                 <button
                   type="button"
                   onClick={() => createFollowUp(item)}
                   disabled={contactBusy}
-                  className="rounded-2xl border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.16)] px-4 py-3 text-sm font-medium text-white transition hover:bg-[rgba(183,146,104,0.24)] disabled:cursor-not-allowed disabled:opacity-55"
+                  className="kolman-focus-ring text-[#a79e92] transition hover:text-[#f0ebe4] disabled:cursor-not-allowed disabled:opacity-55"
                 >
-                  {followUpLoading ? 'Lagrer…' : item.openFollowUp ? 'Lag ny oppfølging' : 'Lag oppfølging'}
+                  {followUpLoading ? 'Lagrer…' : 'Følg opp'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSnoozeContactId(snoozeOpen ? null : item.contact.id)}
+                  disabled={contactBusy}
+                  className="kolman-focus-ring text-[#a79e92] transition hover:text-[#f0ebe4] disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  Utsett
                 </button>
                 <button
                   type="button"
                   onClick={() => setOutcomeContactId(outcomeOpen ? null : item.contact.id)}
                   disabled={contactBusy}
-                  className="rounded-2xl border border-[rgba(220,194,163,0.14)] bg-[rgba(255,245,232,0.03)] px-4 py-3 text-sm font-medium text-white transition hover:bg-[rgba(255,245,232,0.06)] disabled:cursor-not-allowed disabled:opacity-55"
+                  className="kolman-focus-ring text-[#a79e92] transition hover:text-[#f0ebe4] disabled:cursor-not-allowed disabled:opacity-55"
                 >
-                  Registrer forsøk
+                  Utfall
                 </button>
-                {outcomeOpen ? (
-                  <div className="space-y-2 rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.025)] p-3">
-                    <button type="button" onClick={() => markContacted(item, 'spoke')} disabled={contactBusy} className="w-full rounded-xl px-3 py-2 text-left text-sm text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)] disabled:opacity-55">Snakket med</button>
-                    <button type="button" onClick={() => markContacted(item, 'left_message')} disabled={contactBusy} className="w-full rounded-xl px-3 py-2 text-left text-sm text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)] disabled:opacity-55">La igjen beskjed</button>
-                    <button type="button" onClick={() => markContacted(item, 'no_answer')} disabled={contactBusy} className="w-full rounded-xl px-3 py-2 text-left text-sm text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)] disabled:opacity-55">Ikke svar</button>
-                  </div>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => setSnoozeContactId(snoozeOpen ? null : item.contact.id)}
-                  disabled={contactBusy}
-                  className="rounded-2xl border border-[rgba(220,194,163,0.14)] bg-[rgba(255,245,232,0.03)] px-4 py-3 text-sm font-medium text-[#d4c4b2] transition hover:bg-[rgba(255,245,232,0.06)] disabled:cursor-not-allowed disabled:opacity-55"
-                >
-                  Utsett
-                </button>
-                {snoozeOpen ? (
-                  <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.025)] p-3">
-                    {([1, 3, 6, 12] as const).map((months) => (
-                      <button key={months} type="button" onClick={() => snoozeContact(item, months)} disabled={contactBusy} className="rounded-xl px-3 py-2 text-sm text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)] disabled:opacity-55">
-                        {months === 12 ? 'Ikke relevant nå' : `${months} mnd`}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-                <Link href={`/contacts/${item.contact.id}` as any} className="rounded-2xl border border-transparent px-4 py-3 text-center text-sm font-medium text-[#d4c4b2] transition hover:border-[rgba(220,194,163,0.10)] hover:bg-[rgba(255,245,232,0.03)]">
-                  Åpne kontakt
+                <Link href={`/contacts/${item.contact.id}` as any} className="kolman-focus-ring text-[#8a8177] transition hover:text-[#f0ebe4]">
+                  Åpne
                 </Link>
               </div>
+
+              {outcomeOpen ? (
+                <div className="absolute right-0 top-[58px] z-30 w-52 border border-[#231f1c] bg-[#141110] p-2 shadow-[0_18px_48px_rgba(0,0,0,0.28)]">
+                  <button type="button" onClick={() => markContacted(item, 'spoke')} disabled={contactBusy} className="kolman-focus-ring block w-full px-3 py-2 text-left text-sm text-[#f0ebe4] transition hover:bg-[#1d1916] disabled:opacity-55">Snakket med</button>
+                  <button type="button" onClick={() => markContacted(item, 'left_message')} disabled={contactBusy} className="kolman-focus-ring block w-full px-3 py-2 text-left text-sm text-[#f0ebe4] transition hover:bg-[#1d1916] disabled:opacity-55">La igjen beskjed</button>
+                  <button type="button" onClick={() => markContacted(item, 'no_answer')} disabled={contactBusy} className="kolman-focus-ring block w-full px-3 py-2 text-left text-sm text-[#f0ebe4] transition hover:bg-[#1d1916] disabled:opacity-55">Ikke svar</button>
+                </div>
+              ) : null}
+
+              {snoozeOpen ? (
+                <div className="absolute right-0 top-[58px] z-30 grid w-56 grid-cols-2 gap-1 border border-[#231f1c] bg-[#141110] p-2 shadow-[0_18px_48px_rgba(0,0,0,0.28)]">
+                  {([1, 3, 6, 12] as const).map((months) => (
+                    <button key={months} type="button" onClick={() => snoozeContact(item, months)} disabled={contactBusy} className="kolman-focus-ring px-3 py-2 text-left text-sm text-[#f0ebe4] transition hover:bg-[#1d1916] disabled:opacity-55">
+                      {months === 12 ? 'Ikke relevant' : `${months} mnd`}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
-            {message?.text ? (
-              <p className={`mt-4 text-sm ${message.type === 'success' ? 'text-emerald-300' : 'text-rose-300'}`}>{message.text}</p>
-            ) : null}
+            <div className="col-span-full ml-[49px] mt-1 min-w-0 md:col-start-3 md:col-end-7 md:ml-0">
+              <p className="truncate text-[13px] leading-5 text-[#a79e92]" title={[...reasons, item.latestNote ? `Notat: ${item.latestNote}` : ''].filter(Boolean).join(' · ')}>
+                {reasons.length ? (
+                  <>
+                    {primaryReason(reasons[0])}
+                    {reasons[1] ? <span> · {reasons[1]}</span> : null}
+                    {item.latestNote ? <span className="text-[#8a8177]"> · Notat: {item.latestNote}</span> : null}
+                  </>
+                ) : item.latestNote ? (
+                  <span>Notat: {item.latestNote}</span>
+                ) : (
+                  <span>Åpne kontakten for mer kontekst.</span>
+                )}
+              </p>
+              {message?.text ? (
+                <p className={`mt-1 text-[13px] ${message.type === 'success' ? 'text-[#d6cec3]' : 'text-[#c4674f]'}`}>{message.text}</p>
+              ) : null}
+            </div>
           </article>
         );
       })}

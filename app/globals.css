@@ -28,11 +28,12 @@ html {
 body {
   min-height: 100vh;
   @apply text-zinc-100;
-  background-color: var(--kolman-bg);
-  background-image:
-    radial-gradient(circle at top, rgba(183, 146, 104, 0.11), transparent 24%),
-    radial-gradient(circle at 20% 18%, rgba(106, 78, 50, 0.16), transparent 20%),
-    linear-gradient(180deg, #0b0908 0%, #100d0b 46%, #0b0908 100%);
+  background: #0e0c0b;
+  font-family: var(--font-kolman-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.font-mono {
+  font-family: var(--font-kolman-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
 .loader-orbit {
@@ -62,12 +63,10 @@ body {
 }
 
 .kolman-card {
-  @apply rounded-[24px] backdrop-blur-xl;
+  @apply rounded-[12px];
   border: 1px solid var(--kolman-border);
-  background: linear-gradient(180deg, rgba(255,245,232,0.043) 0%, rgba(255,245,232,0.024) 100%);
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255,248,240,0.035);
+  background: rgba(255,245,232,0.026);
+  box-shadow: none;
 }
 
 .kolman-card-soft {
@@ -122,4 +121,18 @@ body {
 
 .kolman-heading {
   letter-spacing: -0.03em;
+}
+
+
+.kolman-focus-ring:focus-visible {
+  outline: 2px solid #b79268;
+  outline-offset: 2px;
+}
+
+.kolman-data-row {
+  border-bottom: 1px solid #231f1c;
+}
+
+.kolman-data-row:hover {
+  background: #141110;
 }

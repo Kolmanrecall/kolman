@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { Shell } from '@/components/shell';
-import { SectionCard } from '@/components/section-card';
 import { RecallQueueClient } from '@/components/recall-queue-client';
 import { getRecallQueue, getRecallSnoozedCount } from '@/lib/recall';
 import { requirePageUser } from '@/lib/page-auth';
@@ -10,67 +9,57 @@ export default async function RecallPage() {
   const [items, snoozedCount] = await Promise.all([getRecallQueue(60), getRecallSnoozedCount()]);
   const high = items.filter((item) => item.priority === 'high').length;
   const medium = items.filter((item) => item.priority === 'medium').length;
-  const withNoFollowUp = items.filter((item) => !item.openFollowUp).length;
 
   return (
     <Shell>
-      <div className="space-y-7">
-        <div className="flex flex-col gap-4 border-b border-[rgba(220,194,163,0.10)] pb-7 md:flex-row md:items-end md:justify-between">
+      <div className="space-y-5">
+        <div className="flex flex-col gap-3 border-b border-[#231f1c] pb-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-[#c6a884]">Oppfølgingskø</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Hvem bør kontaktes nå</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#d4c4b2]">
-              En prioritert arbeidsliste for gamle kunder, varme kontakter og saker som mangler neste steg.
-            </p>
+            <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-[#f0ebe4]">Hvem bør kontaktes nå</h1>
+            <p className="mt-1 text-sm text-[#a79e92]">Ringeliste for gamle kunder, varme kontakter og saker som mangler neste steg.</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/contacts/new" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">Ny kontakt</Link>
-            <Link href="/contacts" className="rounded-full border border-[rgba(220,194,163,0.10)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)]">
-              Alle kontakter
-            </Link>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[13px] tabular-nums text-[#a79e92]">
+            <span><strong className="font-medium text-[#f0ebe4]">{items.length}</strong> i kø</span>
+            <span><strong className="font-medium text-[#f0ebe4]">{high}</strong> høy</span>
+            <span><strong className="font-medium text-[#f0ebe4]">{medium}</strong> medium</span>
+            <span><strong className="font-medium text-[#f0ebe4]">{snoozedCount}</strong> utsatt</span>
+            <Link href="/contacts/new" className="border-b border-[#6e5637] pb-0.5 text-[#f0ebe4] transition hover:border-[#b79268] kolman-focus-ring">Ny kontakt</Link>
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-[22px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.025)] p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-[#9f907f]">Høy prioritet</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{high}</p>
-          </div>
-          <div className="rounded-[22px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.025)] p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-[#9f907f]">Medium</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{medium}</p>
-          </div>
-          <div className="rounded-[22px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.025)] p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-[#9f907f]">Mangler oppfølging</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{withNoFollowUp}</p>
-          </div>
-        </div>
-
-        <SectionCard title="Prioritert nå">
-          {snoozedCount > 0 ? (
-            <div className="mb-4 rounded-2xl border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] px-4 py-3 text-sm text-[#d4c4b2]">
-              Utsatt: {snoozedCount} kontakter er skjult fra køen til valgt dato.
+        {items.length ? (
+          <div>
+            <div className="grid grid-cols-[46px_3px_minmax(190px,1.15fr)_132px_132px_172px] gap-x-5 border-b border-[#2e2924] pb-2 font-mono text-[10px] font-medium uppercase tracking-[0.13em] text-[#8a8177] max-lg:hidden">
+              <div>Nr</div>
+              <div />
+              <div>Kontakt</div>
+              <div>Telefon</div>
+              <div>Siste kontakt</div>
+              <div>Handling</div>
             </div>
-          ) : null}
-          {items.length ? (
             <RecallQueueClient items={items} />
-          ) : (
-            <div className="rounded-[24px] border border-[rgba(220,194,163,0.10)] bg-[rgba(255,245,232,0.02)] p-7">
-              <h2 className="text-xl font-semibold text-white">Ingen kontakter i køen akkurat nå</h2>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-[#d4c4b2]">
-                Når kontakter mangler neste steg, har gamle relasjoner eller får nye signaler fra sakene dine, dukker de opp her.
+            {snoozedCount > 0 ? (
+              <p className="pt-4 text-sm text-[#8a8177]">
+                {snoozedCount} kontakter er utsatt og skjult fra køen til valgt dato.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/import" className="rounded-full border border-[rgba(183,146,104,0.32)] bg-[rgba(183,146,104,0.12)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#ead3b7] transition hover:bg-[rgba(183,146,104,0.20)]">
-                  Importer
-                </Link>
-                <Link href="/contacts/new" className="rounded-full border border-[rgba(220,194,163,0.10)] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#efe2d1] transition hover:bg-[rgba(255,245,232,0.06)]">
-                  Ny kontakt
-                </Link>
-              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="border-b border-[#231f1c] py-12">
+            <h2 className="text-lg font-semibold text-[#f0ebe4]">Ingen kontakter i køen akkurat nå</h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-[#a79e92]">
+              Når kontakter mangler neste steg, har gamle relasjoner eller får nye signaler fra sakene dine, dukker de opp her.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-5 text-sm">
+              <Link href="/import" className="border-b border-[#b79268] pb-0.5 font-medium text-[#f0ebe4] transition hover:text-white kolman-focus-ring">
+                Importer kontakter
+              </Link>
+              <Link href="/contacts/new" className="border-b border-[#6e5637] pb-0.5 text-[#a79e92] transition hover:text-[#f0ebe4] kolman-focus-ring">
+                Legg inn én kontakt
+              </Link>
             </div>
-          )}
-        </SectionCard>
+          </div>
+        )}
       </div>
     </Shell>
   );
