@@ -4,6 +4,16 @@ import type { Contact, PropertyCaseStatus } from '@/lib/types';
 
 export type RecallPriority = 'high' | 'medium' | 'low';
 
+export type RecallQueueResult = {
+  items: RecallQueueItem[];
+  total: number;
+  high: number;
+  medium: number;
+  low: number;
+  limit: number;
+  hasMore: boolean;
+};
+
 export type RecallQueueItem = {
   contact: Contact;
   score: number;
@@ -399,7 +409,7 @@ export async function getRecallSnoozedCount(): Promise<number> {
   }
 }
 
-export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
+async function buildRecallQueueItems(): Promise<RecallQueueItem[]> {
   const user = await getAuthenticatedUser();
   if (!user) return [];
 
@@ -492,9 +502,28 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
         }),
       )
       .filter((item): item is RecallQueueItem => Boolean(item))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+      .sort((a, b) => b.score - a.score);
   } catch (error) {
-    throwRecallError('getRecallQueue', error);
+    throwRecallError('buildRecallQueueItems', error);
   }
+}
+
+export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
+  const items = await buildRecallQueueItems();
+  return items.slice(0, limit);
+}
+
+export async function getRecallQueueResult(limit = 60): Promise<RecallQueueResult> {
+  const allItems = await buildRecallQueueItems();
+  const items = allItems.slice(0, limit);
+
+  return {
+    items,
+    total: allItems.length,
+    high: allItems.filter((item) => item.priority === 'high').length,
+    medium: allItems.filter((item) => item.priority === 'medium').length,
+    low: allItems.filter((item) => item.priority === 'low').length,
+    limit,
+    hasMore: allItems.length > items.length,
+  };
 }

@@ -1,14 +1,13 @@
 import Link from 'next/link';
 import { Shell } from '@/components/shell';
 import { RecallQueueClient } from '@/components/recall-queue-client';
-import { getRecallQueue, getRecallSnoozedCount } from '@/lib/recall';
+import { getRecallQueueResult, getRecallSnoozedCount } from '@/lib/recall';
 import { requirePageUser } from '@/lib/page-auth';
 
 export default async function RecallPage() {
   await requirePageUser();
-  const [items, snoozedCount] = await Promise.all([getRecallQueue(60), getRecallSnoozedCount()]);
-  const high = items.filter((item) => item.priority === 'high').length;
-  const medium = items.filter((item) => item.priority === 'medium').length;
+  const [queue, snoozedCount] = await Promise.all([getRecallQueueResult(60), getRecallSnoozedCount()]);
+  const { items, total, high, medium, hasMore } = queue;
 
   return (
     <Shell>
@@ -19,7 +18,7 @@ export default async function RecallPage() {
             <p className="mt-1 text-sm text-[#a79e92]">Ringeliste for gamle kunder, varme kontakter og saker som mangler neste steg.</p>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[13px] tabular-nums text-[#a79e92]">
-            <span><strong className="font-medium text-[#f0ebe4]">{items.length}</strong> i kø</span>
+            <span><strong className="font-medium text-[#f0ebe4]">{items.length}</strong>{hasMore ? ` av ${total}` : ''} i kø</span>
             <span><strong className="font-medium text-[#f0ebe4]">{high}</strong> høy</span>
             <span><strong className="font-medium text-[#f0ebe4]">{medium}</strong> medium</span>
             <span><strong className="font-medium text-[#f0ebe4]">{snoozedCount}</strong> utsatt</span>
@@ -38,8 +37,11 @@ export default async function RecallPage() {
               <div>Handling</div>
             </div>
             <RecallQueueClient items={items} />
+            {hasMore ? (
+              <p className="pt-4 text-sm text-[#8a8177]">Viser de første {items.length} av {total} kontakter. Jobb listen ovenfra, så fylles den på etter hvert.</p>
+            ) : null}
             {snoozedCount > 0 ? (
-              <p className="pt-4 text-sm text-[#8a8177]">
+              <p className="pt-2 text-sm text-[#8a8177]">
                 {snoozedCount} kontakter er utsatt og skjult fra køen til valgt dato.
               </p>
             ) : null}

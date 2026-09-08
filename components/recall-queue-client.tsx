@@ -250,7 +250,7 @@ export function RecallQueueClient({ items }: { items: RecallQueueItem[] }) {
             </div>
 
             <div className="col-span-full ml-[49px] mt-1 min-w-0 md:col-start-3 md:col-end-7 md:ml-0">
-              <p className="truncate text-[13px] leading-5 text-[#a79e92]" title={[...reasons, item.latestNote ? `Notat: ${item.latestNote}` : ''].filter(Boolean).join(' · ')}>
+              <p className="kolman-line-clamp-2 text-[13px] leading-5 text-[#a79e92]" title={[...reasons, item.latestNote ? `Notat: ${item.latestNote}` : ''].filter(Boolean).join(' · ')}>
                 {reasons.length ? (
                   <>
                     {primaryReason(reasons[0])}

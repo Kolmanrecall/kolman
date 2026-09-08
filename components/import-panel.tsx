@@ -16,6 +16,11 @@ const HEADER_ALIASES = {
   last_contacted_at: ['siste kontakt', 'last contacted', 'last_contacted_at', 'sist kontaktet'],
 };
 
+type InvalidImportRow = {
+  rowNumber: number;
+  reason: string;
+};
+
 type ParsedRow = {
   full_name: string;
   email: string | null;
@@ -160,6 +165,7 @@ export function ImportPanel() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewCount, setPreviewCount] = useState<number | null>(null);
+  const [invalidRows, setInvalidRows] = useState<InvalidImportRow[]>([]);
 
   const helperText = useMemo(() => {
     if (!file) return 'Bruk en CSV med navn og minst ett kontaktpunkt som e-post eller telefon.';
@@ -172,6 +178,7 @@ export function ImportPanel() {
     setMessage(null);
     setError(null);
     setPreviewCount(null);
+    setInvalidRows([]);
     if (!selectedFile) return;
 
     try {
@@ -187,6 +194,7 @@ export function ImportPanel() {
     event.preventDefault();
     setMessage(null);
     setError(null);
+    setInvalidRows([]);
 
     if (!file) {
       setError('Velg en CSV-fil først.');
@@ -213,6 +221,8 @@ export function ImportPanel() {
       const invalidText = json.skippedInvalid
         ? ` ${json.skippedInvalid} rad${json.skippedInvalid === 1 ? '' : 'er'} hadde mangler og ble hoppet over.`
         : '';
+      const returnedInvalidRows = Array.isArray(json.invalidRows) ? json.invalidRows.slice(0, 25) as InvalidImportRow[] : [];
+      setInvalidRows(returnedInvalidRows);
       setMessage(`Import ferdig. ${json.inserted ?? rows.length} kontakter ble lagret.${duplicateText}${invalidText} Sender deg til Oppfølgingskøen.`);
       setFile(null);
       setPreviewCount(null);
@@ -265,6 +275,17 @@ export function ImportPanel() {
 
             <p className="text-sm text-[#b8aa98]">{helperText} Komma, semikolon og tabulator støttes.</p>
             {message ? <p className="text-sm text-[#dcbf9e]">{message}</p> : null}
+            {invalidRows.length ? (
+              <div className="rounded-[12px] border border-[#2e2924] bg-[#141110] p-4 text-sm text-[#a79e92]">
+                <p className="font-medium text-[#f0ebe4]">Rader hoppet over</p>
+                <ul className="mt-2 space-y-1">
+                  {invalidRows.map((row) => (
+                    <li key={`${row.rowNumber}-${row.reason}`}>Rad {row.rowNumber}: {row.reason}</li>
+                  ))}
+                </ul>
+                {invalidRows.length >= 25 ? <p className="mt-2 text-[#8a8177]">Viser de første 25 radene.</p> : null}
+              </div>
+            ) : null}
             {error ? <p className="text-sm text-rose-300">{error}</p> : null}
           </form>
         </SectionCard>
