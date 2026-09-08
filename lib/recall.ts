@@ -63,15 +63,22 @@ type DraftRow = {
   created_at: string;
 };
 
+type LinkedCaseRow = {
+  id: string;
+  title: string;
+  status: PropertyCaseStatus | string | null;
+  next_step: string | null;
+  next_step_due_date: string | null;
+};
+
 type CaseContactRow = {
   contact_id: string;
-  case?: {
-    id: string;
-    title: string;
-    status: PropertyCaseStatus | string | null;
-    next_step: string | null;
-    next_step_due_date: string | null;
-  } | null;
+  case?: LinkedCaseRow | null;
+};
+
+type RawCaseContactRow = {
+  contact_id: string;
+  case?: LinkedCaseRow | LinkedCaseRow[] | null;
 };
 
 type ReplyRow = {
@@ -453,9 +460,10 @@ export async function getRecallQueue(limit = 30): Promise<RecallQueueItem[]> {
     });
 
     const linkedCasesByContact = new Map<string, CaseContactRow[]>();
-    ((caseContactsResult.data ?? []) as CaseContactRow[]).forEach((row) => {
+    ((caseContactsResult.data ?? []) as unknown as RawCaseContactRow[]).forEach((row) => {
+      const linkedCase = Array.isArray(row.case) ? row.case[0] ?? null : row.case ?? null;
       const group = linkedCasesByContact.get(row.contact_id) ?? [];
-      group.push(row);
+      group.push({ contact_id: row.contact_id, case: linkedCase });
       linkedCasesByContact.set(row.contact_id, group);
     });
 
